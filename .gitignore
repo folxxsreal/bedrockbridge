@@ -42,3 +42,7 @@ replay_*.log
 # claude code (local session settings)
 
 .claude/settings.local.json
+
+# downloaded geyser fat jar (will be auto-downloaded by gradle task in a later sub-etapa)
+
+libs/
