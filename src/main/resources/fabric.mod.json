@@ -1,0 +1,37 @@
+{
+	"schemaVersion": 1,
+	"id": "bedrockbridge",
+	"version": "${version}",
+	"name": "BedrockBridge",
+	"description": "Comparte tu mundo de Minecraft Java con jugadores de Bedrock con un solo botón.",
+	"authors": [
+		"dnixxv"
+	],
+	"contact": {
+		"homepage": "https://github.com/dnixxv/bedrockbridge"
+	},
+	"license": "MIT",
+	"icon": "assets/bedrockbridge/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.example.BedrockBridge"
+		],
+		"client": [
+			"com.example.client.BedrockBridgeClient"
+		]
+	},
+	"mixins": [
+		"bedrockbridge.mixins.json",
+		{
+			"config": "bedrockbridge.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
