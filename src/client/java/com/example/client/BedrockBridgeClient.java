@@ -1,6 +1,7 @@
 package com.example.client;
 
 import com.example.BedrockBridge;
+import com.example.client.playit.PlayitManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
@@ -68,10 +69,15 @@ public class BedrockBridgeClient implements ClientModInitializer {
 				: Component.literal("§a[BedrockBridge] §rLAN abierta en §e" + port + "§r. §7(Compartir con Bedrock desactivado)");
 			client.player.sendSystemMessage(msg);
 		}
+
+		if (shareWithBedrock) {
+			PlayitManager.get().start();
+		}
 	}
 
 	private void onLanClosed(Minecraft client) {
 		BedrockBridge.LOGGER.info("Mundo LAN cerrado.");
+		PlayitManager.get().stop();
 		if (client.player != null) {
 			client.player.sendSystemMessage(
 				Component.literal("§c[BedrockBridge] §rMundo LAN cerrado.")
