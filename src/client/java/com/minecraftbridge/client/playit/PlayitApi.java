@@ -3,7 +3,6 @@ package com.minecraftbridge.client.playit;
 import com.minecraftbridge.BedrockBridge;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -89,22 +88,11 @@ final class PlayitApi {
 	}
 
 	private static String firstAgentId(String secret) throws IOException, InterruptedException {
-		JsonObject resp = post("/tunnels/list", new JsonObject(), secret);
-		// Easiest path to the agent UUID: pull it from any tunnel's origin.
-		JsonArray tunnels = resp.has("tunnels") ? resp.getAsJsonArray("tunnels") : new JsonArray();
-		for (JsonElement el : tunnels) {
-			JsonObject origin = el.getAsJsonObject().getAsJsonObject("origin");
-			if (origin == null) continue;
-			JsonObject originData = origin.getAsJsonObject("data");
-			if (originData != null && originData.has("agent_id")) return originData.get("agent_id").getAsString();
-		}
-		// Fallback: ask /agents/list (requires no body).
-		try {
-			JsonObject agents = post("/agents/list", new JsonObject(), secret);
-			JsonArray arr = agents.has("agents") ? agents.getAsJsonArray("agents") : new JsonArray();
-			if (!arr.isEmpty()) return stringOr(arr.get(0).getAsJsonObject(), "id", null);
-		} catch (IOException ignored) {}
-		return null;
+		// /agents/rundata devuelve el UUID del agente directamente, sin depender
+		// de que haya tuneles previos. En cuentas frescas (caso tipico tras claim)
+		// no hay tuneles, asi que /tunnels/list devolvia null y rompia el create.
+		JsonObject resp = post("/agents/rundata", new JsonObject(), secret);
+		return resp.has("agent_id") ? resp.get("agent_id").getAsString() : null;
 	}
 
 	private static void createBedrockTunnel(String secret, String agentId, int localPort) throws IOException, InterruptedException {

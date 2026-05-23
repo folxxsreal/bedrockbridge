@@ -32,7 +32,9 @@ public final class PlayitManager {
 	private Path binDir;
 	private Path secretPath;
 	private Path daemonLogPath;
-	private Path daemonSocketPath;
+	// String porque en Windows es un named pipe (\\.\pipe\...), no un path de archivo.
+	// El daemon Rust elige bind() vs CreateNamedPipe() según el prefijo.
+	private String daemonSocketArg;
 
 	private volatile Process daemonProcess;
 	private volatile Thread daemonReaderThread;
@@ -53,7 +55,14 @@ public final class PlayitManager {
 		binDir = stateDir.resolve("bin");
 		secretPath = stateDir.resolve("playit.toml");
 		daemonLogPath = stateDir.resolve("playit.log");
-		daemonSocketPath = stateDir.resolve("playit.sock");
+		String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+		if (os.contains("win")) {
+			// Named pipe propio para no chocar con un playitd-system instalado.
+			daemonSocketArg = "\\\\.\\pipe\\bedrockbridge-playit";
+		} else {
+			// Unix socket file dentro del state dir.
+			daemonSocketArg = stateDir.resolve("playit.sock").toString();
+		}
 	}
 
 	// Called from onLanOpened when shareWithBedrock=true. Non-blocking: heavy lifting
@@ -206,11 +215,15 @@ public final class PlayitManager {
 	}
 
 	private void launchDaemon(Path daemonPath) throws IOException {
-		Files.deleteIfExists(daemonSocketPath);
+		// Solo en Linux/Mac borrar el socket file viejo; en Windows el "socket"
+		// es un named pipe que el daemon registra al arrancar (no es file).
+		if (!daemonSocketArg.startsWith("\\\\")) {
+			Files.deleteIfExists(Path.of(daemonSocketArg));
+		}
 		// No -l: daemon writes to stdout/stderr, which we merge and read line-by-line below.
 		ProcessBuilder pb = new ProcessBuilder(daemonPath.toString(),
 				"--secret-path", secretPath.toString(),
-				"--socket-path", daemonSocketPath.toString())
+				"--socket-path", daemonSocketArg)
 				.redirectErrorStream(true);
 		daemonProcess = pb.start();
 		BedrockBridge.LOGGER.info("Playit daemon arrancado (pid={}).", daemonProcess.pid());
