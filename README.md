@@ -137,4 +137,4 @@ BedrockBridge is not affiliated with, endorsed by, or sponsored by GeyserMC, Flo
 
 ## License
 
-CC0 1.0 Universal. See `LICENSE`.
+MIT License. See `LICENSE`.
