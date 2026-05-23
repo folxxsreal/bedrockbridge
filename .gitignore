@@ -46,3 +46,22 @@ replay_*.log
 # downloaded geyser fat jar (will be auto-downloaded by gradle task in a later sub-etapa)
 
 libs/
+
+# runtime state (puede contener playit.toml con secret de la cuenta playit)
+
+bedrockbridge/
+**/bedrockbridge/playit.toml
+
+# secrets locales
+
+.env
+.env.*
+
+# logs generales
+
+*.log
+*.log.gz
+
+# claude code (memoria de proyecto local)
+
+.claude/
