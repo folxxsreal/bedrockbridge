@@ -11,6 +11,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.screens.ShareToLanScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 public class BedrockBridgeClient implements ClientModInitializer {
 
@@ -60,27 +61,32 @@ public class BedrockBridgeClient implements ClientModInitializer {
 
 	private void onLanOpened(Minecraft client) {
 		int port = client.getSingleplayerServer().getPort();
-		BedrockBridge.LOGGER.info("¡Mundo abierto a LAN! Puerto Java: {} (shareWithBedrock={})", port, BedrockBridgeState.shareWithBedrock);
+		boolean share = BedrockBridgeState.shareWithBedrock;
+		BedrockBridge.LOGGER.info("¡Mundo abierto a LAN! Puerto Java: {} (shareWithBedrock={})", port, share);
 
-		if (client.player != null) {
-			Component msg = BedrockBridgeState.shareWithBedrock
-				? Component.literal("§a[BedrockBridge] §rJava §e" + port + "§r · Bedrock §e19132§r (UDP). Floodgate activo.")
-				: Component.literal("§a[BedrockBridge] §rLAN abierta en §e" + port + "§r. §7(Compartir con Bedrock desactivado)");
-			client.player.sendSystemMessage(msg);
-		}
-
-		if (BedrockBridgeState.shareWithBedrock) {
+		if (share) {
+			MutableComponent msg = Chat.header().append(Chat.ok("LAN abierta"));
+			Chat.send(msg);
+			Chat.send(Chat.label("Java (LAN)").append(Chat.value(port)));
+			Chat.send(Chat.label("Bedrock (LAN)").append(Chat.value(19132))
+					.append(Component.literal(" ")).append(Chat.muted("(Floodgate activo)")));
+			Chat.send(Chat.label("Internet").append(Chat.muted("preparando túnel...")));
 			PlayitManager.get().start();
+		} else {
+			MutableComponent msg = Chat.header()
+					.append(Chat.ok("LAN abierta en puerto "))
+					.append(Chat.value(port))
+					.append(Component.literal(" "))
+					.append(Chat.muted("(solo Java — Bedrock desactivado)"));
+			Chat.send(msg);
 		}
 	}
 
 	private void onLanClosed(Minecraft client) {
 		BedrockBridge.LOGGER.info("Mundo LAN cerrado.");
 		PlayitManager.get().stop();
-		if (client.player != null) {
-			client.player.sendSystemMessage(
-				Component.literal("§c[BedrockBridge] §rMundo LAN cerrado.")
-			);
-		}
+		MutableComponent msg = Chat.header()
+				.append(Chat.muted("LAN cerrada · túnel parado"));
+		Chat.send(msg);
 	}
 }

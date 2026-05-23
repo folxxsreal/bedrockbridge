@@ -1,14 +1,12 @@
 package com.example.client.playit;
 
 import com.example.BedrockBridge;
+import com.example.client.Chat;
 import com.example.playit.PlayitBinaries;
 import com.example.playit.PlayitBinaries.InstalledBinaries;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -63,7 +61,6 @@ public final class PlayitManager {
 			BedrockBridge.LOGGER.info("Playit daemon ya está corriendo, no se relanza.");
 			return;
 		}
-		chat("§b[Playit] §rPreparando túnel a internet...");
 		new Thread(this::startAsync, "BedrockBridge-Playit-Bootstrap").start();
 	}
 
@@ -77,11 +74,12 @@ public final class PlayitManager {
 				launchDaemon(bins.daemon());
 				ensureTunnelAsync();
 			} else {
-				chat("§e[Playit] §rEsperando claim. Cuando lo confirmes el túnel arranca solo.");
+				Chat.error("Esperando claim", "abrí el link de arriba en el navegador");
 			}
 		} catch (Exception e) {
 			BedrockBridge.LOGGER.error("Fallo al iniciar Playit", e);
-			chat("§c[Playit] §rError: " + e.getMessage());
+			Chat.error("Playit no arrancó: " + e.getMessage(),
+					"revisá los logs y reabrí LAN");
 		}
 	}
 
@@ -100,8 +98,8 @@ public final class PlayitManager {
 				}
 			} catch (Exception e) {
 				BedrockBridge.LOGGER.error("Fallo al asegurar túnel Playit", e);
-				chat("§c[Playit] §rNo se pudo crear el túnel: " + e.getMessage()
-						+ ". Créalo manualmente en https://playit.gg/account/tunnels/new (UDP, local 19132).");
+				Chat.error("No se pudo crear el túnel: " + e.getMessage(),
+						"creá uno manual en playit.gg/account/tunnels (UDP, local 19132)");
 			}
 		}, "BedrockBridge-Playit-TunnelResolver").start();
 	}
@@ -159,7 +157,7 @@ public final class PlayitManager {
 		}
 		Files.writeString(secretPath, "secret_key = \"" + secret + "\"\n", StandardCharsets.UTF_8);
 		BedrockBridge.LOGGER.info("Secret de Playit guardado en {}", secretPath);
-		chat("§a[Playit] §rClaim aceptado. Arrancando túnel...");
+		Chat.send(Chat.header().append(Chat.ok("Claim aceptado · arrancando túnel...")));
 	}
 
 	private void launchDaemon(Path daemonPath) throws IOException {
@@ -171,7 +169,6 @@ public final class PlayitManager {
 				.redirectErrorStream(true);
 		daemonProcess = pb.start();
 		BedrockBridge.LOGGER.info("Playit daemon arrancado (pid={}).", daemonProcess.pid());
-		chat("§a[Playit] §rTúnel arrancando. Tu endpoint público se mostrará en cuanto esté listo.");
 
 		daemonReaderThread = new Thread(this::readDaemonOutput, "BedrockBridge-Playit-Daemon-Reader");
 		daemonReaderThread.setDaemon(true);
@@ -227,30 +224,19 @@ public final class PlayitManager {
 	}
 
 	private void announceClaimUrl(String url) {
-		MutableComponent c = Component.literal("§b[Playit] §rAbre esto para autorizar el túnel: ")
-				.append(Component.literal("§9§n" + url).withStyle(
-						Style.EMPTY.withClickEvent(new ClickEvent.OpenUrl(java.net.URI.create(url)))));
-		sendChat(c);
+		// Primera vez que el usuario usa el mod: necesita autorizar el agente.
+		// Mostramos el link grande y clickeable + instrucción mínima.
+		Chat.send(Chat.header().append(Chat.warn("Primera vez · necesitamos autorizar el túnel")));
+		MutableComponent line = Chat.muted("  Abrí este link y aceptá: ").append(Chat.link(url));
+		Chat.send(line);
 	}
 
 	private void announceEndpoint(String endpoint) {
-		MutableComponent c = Component.literal("§a[Playit] §rTu mundo está EN INTERNET: ")
-				.append(Component.literal("§e" + endpoint))
-				.append(Component.literal("§r — pegá esto en Bedrock → Servers → Add Server (UDP)."));
-		sendChat(c);
-	}
-
-	private void chat(String text) {
-		sendChat(Component.literal(text));
-	}
-
-	private void sendChat(Component component) {
-		Minecraft mc = Minecraft.getInstance();
-		// sendSystemMessage hits the render thread internally; dispatch from any worker.
-		mc.execute(() -> {
-			if (mc.player != null) {
-				mc.player.sendSystemMessage(component);
-			}
-		});
+		// Reemplazo del placeholder "Internet: preparando túnel..." con el endpoint real.
+		MutableComponent line = Chat.label("Internet")
+				.append(Chat.copyable(endpoint))
+				.append(Component.literal("  "))
+				.append(Chat.muted("[click para copiar]"));
+		Chat.send(line);
 	}
 }
