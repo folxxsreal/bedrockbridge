@@ -1,4 +1,4 @@
-package com.example;
+package com.minecraftbridge;
 
 import net.fabricmc.api.ModInitializer;
 

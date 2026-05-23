@@ -1,10 +1,10 @@
-package com.example.client.playit;
+package com.minecraftbridge.client.playit;
 
-import com.example.BedrockBridge;
-import com.example.client.Chat;
-import com.example.client.PlayitStatus;
-import com.example.playit.PlayitBinaries;
-import com.example.playit.PlayitBinaries.InstalledBinaries;
+import com.minecraftbridge.BedrockBridge;
+import com.minecraftbridge.client.Chat;
+import com.minecraftbridge.client.PlayitStatus;
+import com.minecraftbridge.playit.PlayitBinaries;
+import com.minecraftbridge.playit.PlayitBinaries.InstalledBinaries;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;

@@ -1,4 +1,4 @@
-package com.example.client;
+package com.minecraftbridge.client;
 
 // Estado público del túnel Playit, leído por el HUD overlay y escrito por PlayitManager.
 // Volatile porque writes vienen del worker thread de Playit y reads del render thread.

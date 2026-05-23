@@ -1,8 +1,8 @@
-package com.example.client;
+package com.minecraftbridge.client;
 
-import com.example.BedrockBridge;
-import com.example.client.playit.PlayitManager;
-import com.example.state.BedrockBridgeState;
+import com.minecraftbridge.BedrockBridge;
+import com.minecraftbridge.client.playit.PlayitManager;
+import com.minecraftbridge.state.BedrockBridgeState;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;

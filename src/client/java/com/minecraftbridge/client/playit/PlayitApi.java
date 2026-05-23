@@ -1,6 +1,6 @@
-package com.example.client.playit;
+package com.minecraftbridge.client.playit;
 
-import com.example.BedrockBridge;
+import com.minecraftbridge.BedrockBridge;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonElement;

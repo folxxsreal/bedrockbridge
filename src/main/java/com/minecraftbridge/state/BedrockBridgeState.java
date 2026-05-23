@@ -1,4 +1,4 @@
-package com.example.state;
+package com.minecraftbridge.state;
 
 // Shared state readable from both Mixins (main sourceset) and the client checkbox
 // callback. Volatile because writes come from the render thread and reads from

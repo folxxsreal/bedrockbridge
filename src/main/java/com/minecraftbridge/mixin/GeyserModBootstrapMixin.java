@@ -1,7 +1,7 @@
-package com.example.mixin;
+package com.minecraftbridge.mixin;
 
-import com.example.BedrockBridge;
-import com.example.state.BedrockBridgeState;
+import com.minecraftbridge.BedrockBridge;
+import com.minecraftbridge.state.BedrockBridgeState;
 import org.geysermc.geyser.platform.mod.GeyserModBootstrap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

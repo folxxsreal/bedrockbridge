@@ -1,6 +1,6 @@
-package com.example.client;
+package com.minecraftbridge.client;
 
-import com.example.state.BedrockBridgeState;
+import com.minecraftbridge.state.BedrockBridgeState;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.DeltaTracker;

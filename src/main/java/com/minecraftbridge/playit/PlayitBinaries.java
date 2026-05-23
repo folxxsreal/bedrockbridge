@@ -1,6 +1,6 @@
-package com.example.playit;
+package com.minecraftbridge.playit;
 
-import com.example.BedrockBridge;
+import com.minecraftbridge.BedrockBridge;
 
 import java.io.IOException;
 import java.io.InputStream;

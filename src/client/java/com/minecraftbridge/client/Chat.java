@@ -1,4 +1,4 @@
-package com.example.client;
+package com.minecraftbridge.client;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;

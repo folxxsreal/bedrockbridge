@@ -15,13 +15,13 @@
 	"environment": "*",
 	"entrypoints": {
 		"preLaunch": [
-			"com.example.BedrockBridgePreLaunch"
+			"com.minecraftbridge.BedrockBridgePreLaunch"
 		],
 		"main": [
-			"com.example.BedrockBridge"
+			"com.minecraftbridge.BedrockBridge"
 		],
 		"client": [
-			"com.example.client.BedrockBridgeClient"
+			"com.minecraftbridge.client.BedrockBridgeClient"
 		]
 	},
 	"mixins": [
