@@ -13,6 +13,6 @@ public class BedrockBridge implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("¡BedrockBridge cargado! Listo para conectar Java y Bedrock.");
+		LOGGER.info("BedrockBridge loaded! Ready to bridge Java and Bedrock.");
 	}
 }

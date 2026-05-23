@@ -17,9 +17,9 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
 
-// Descarga lazy del daemon de Playit por OS/arch. Solo daemon — el claim flow
-// se hace en Java puro vía PlayitClaim, así no necesitamos el binario CLI
-// (que Windows ni siquiera publica en releases).
+// Lazy download of the Playit daemon per OS/arch. Daemon only — the claim flow
+// runs in pure Java via PlayitClaim, so we don't need the CLI binary (which
+// Windows doesn't even publish in releases).
 public final class PlayitBinaries {
 
 	public static final String RELEASE_TAG = "v1.0.4";
@@ -30,8 +30,8 @@ public final class PlayitBinaries {
 		public String url() { return RELEASE_URL_BASE + name; }
 	}
 
-	// Matriz de plataformas soportadas. Agregar una entrada nueva = nada más
-	// pinear el SHA256 desde el release v1.0.4 y agregar el case en detect().
+	// Supported-platform matrix. Adding a new entry = just pin the SHA256 from
+	// the v1.0.4 release and add the case in detect().
 	private static final DaemonSpec LINUX_AMD64 = new DaemonSpec(
 			"playit-linux-amd64",
 			"abc88684b1b535c871fb3fb67a2a8cde08ce99bf80b1cafc00b0b01ab5c3956c");
@@ -53,16 +53,16 @@ public final class PlayitBinaries {
 		if (Files.exists(target) && sha256(target).equals(spec.sha256())) {
 			return target;
 		}
-		BedrockBridge.LOGGER.info("Descargando {} desde {} ...", spec.name(), spec.url());
+		BedrockBridge.LOGGER.info("Downloading {} from {} ...", spec.name(), spec.url());
 		download(spec.url(), target);
 		String actual = sha256(target);
 		if (!actual.equals(spec.sha256())) {
 			Files.deleteIfExists(target);
-			throw new IOException("SHA256 mismatch para " + spec.name()
-					+ " — esperado " + spec.sha256() + " recibido " + actual);
+			throw new IOException("SHA256 mismatch for " + spec.name()
+					+ " — expected " + spec.sha256() + " got " + actual);
 		}
 		makeExecutable(target);
-		BedrockBridge.LOGGER.info("{} listo en {} (SHA256 verificado).", spec.name(), target);
+		BedrockBridge.LOGGER.info("{} ready at {} (SHA256 verified).", spec.name(), target);
 		return target;
 	}
 
@@ -76,13 +76,13 @@ public final class PlayitBinaries {
 			if (arch.equals("amd64") || arch.equals("x86_64")) return WINDOWS_X86_64;
 		} else if (os.contains("mac") || os.contains("darwin")) {
 			throw new UnsupportedOperationException(
-					"Playit no publica binarios oficiales de macOS. Por ahora BedrockBridge "
-					+ "no puede levantar el túnel automáticamente en Mac. Geyser y Floodgate "
-					+ "siguen funcionando para conexiones LAN locales.");
+					"Playit doesn't publish official macOS binaries. BedrockBridge can't bring "
+					+ "the tunnel up automatically on Mac for now. Geyser and Floodgate still "
+					+ "work for local LAN connections.");
 		}
 		throw new UnsupportedOperationException(
-				"Plataforma no soportada por BedrockBridge para Playit: os=" + os + " arch=" + arch
-				+ ". Soportadas: Linux (amd64, aarch64) y Windows (x86_64).");
+				"Platform not supported by BedrockBridge for Playit: os=" + os + " arch=" + arch
+				+ ". Supported: Linux (amd64, aarch64) and Windows (x86_64).");
 	}
 
 	private static void download(String url, Path target) throws IOException {
@@ -93,14 +93,14 @@ public final class PlayitBinaries {
 		try {
 			HttpResponse<InputStream> resp = client.send(req, HttpResponse.BodyHandlers.ofInputStream());
 			if (resp.statusCode() != 200) {
-				throw new IOException("HTTP " + resp.statusCode() + " al bajar " + url);
+				throw new IOException("HTTP " + resp.statusCode() + " downloading " + url);
 			}
 			try (InputStream in = resp.body()) {
 				Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IOException("Interrumpido al bajar " + url, e);
+			throw new IOException("Interrupted while downloading " + url, e);
 		}
 	}
 
@@ -114,7 +114,7 @@ public final class PlayitBinaries {
 			}
 			return HexFormat.of().formatHex(md.digest());
 		} catch (java.security.NoSuchAlgorithmException e) {
-			throw new IllegalStateException("SHA-256 no disponible en esta JVM", e);
+			throw new IllegalStateException("SHA-256 not available in this JVM", e);
 		}
 	}
 
@@ -126,7 +126,7 @@ public final class PlayitBinaries {
 			perms.add(PosixFilePermission.OTHERS_EXECUTE);
 			Files.setPosixFilePermissions(path, perms);
 		} catch (UnsupportedOperationException e) {
-			// Windows: no hay POSIX perms, .exe es ejecutable por la extensión.
+			// Windows: no POSIX perms; .exe is executable by extension.
 		}
 	}
 }

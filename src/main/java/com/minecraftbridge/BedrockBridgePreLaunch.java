@@ -16,15 +16,15 @@ public class BedrockBridgePreLaunch implements PreLaunchEntrypoint {
 		Path configPath = FabricLoader.getInstance().getConfigDir()
 				.resolve("Geyser-Fabric").resolve("config.yml");
 		if (Files.exists(configPath)) {
-			BedrockBridge.LOGGER.info("Config Geyser ya existe en {}, no se sobreescribe.", configPath);
+			BedrockBridge.LOGGER.info("Geyser config already exists at {}, not overwriting.", configPath);
 			return;
 		}
 		try {
 			Files.createDirectories(configPath.getParent());
 			Files.writeString(configPath, DEFAULT_GEYSER_CONFIG);
-			BedrockBridge.LOGGER.info("Config Geyser por defecto escrito en {} (auth-type=floodgate).", configPath);
+			BedrockBridge.LOGGER.info("Default Geyser config written to {} (auth-type=floodgate).", configPath);
 		} catch (IOException e) {
-			BedrockBridge.LOGGER.error("No se pudo escribir el config de Geyser en {}", configPath, e);
+			BedrockBridge.LOGGER.error("Could not write Geyser config to {}", configPath, e);
 		}
 	}
 
@@ -38,7 +38,7 @@ public class BedrockBridgePreLaunch implements PreLaunchEntrypoint {
 			  auth-type: floodgate
 			motd:
 			  primary-motd: BedrockBridge
-			  secondary-motd: Compartiendo con Bedrock
+			  secondary-motd: Sharing with Bedrock
 			  passthrough-motd: true
 			  passthrough-player-counts: true
 			gameplay:

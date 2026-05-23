@@ -7,20 +7,20 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-// Filtra los broadcasts ruidosos que Minecraft y Geyser meten en chat cuando
-// se abre LAN, para que solo queden los mensajes estructurados de BedrockBridge.
-// Comparamos contra texto plano (Component.getString) que ya tiene resueltos
-// los placeholders de las translation keys.
+// Filters out the noisy broadcasts Minecraft and Geyser dump into chat when LAN
+// opens, so only BedrockBridge's structured messages remain. We compare against
+// the plain text (Component.getString), which already has translation key
+// placeholders resolved.
 @Mixin(ChatComponent.class)
 public class ChatComponentMixin {
 
 	private static boolean bedrockbridge$shouldFilter(Component component) {
 		String text = component.getString();
-		// Geyser broadcastea "Started Geyser on UDP port 19132" — redundante con
-		// nuestra línea de chat "Bedrock (LAN): 19132".
+		// Geyser broadcasts "Started Geyser on UDP port 19132" — redundant with
+		// our chat line "Bedrock (LAN): 19132".
 		if (text.startsWith("Started Geyser on UDP port")) return true;
-		// Vanilla broadcastea "Local game hosted on port X" — redundante con
-		// nuestra línea "Java (LAN): <port>".
+		// Vanilla broadcasts "Local game hosted on port X" — redundant with our
+		// "Java (LAN): <port>" line.
 		if (text.startsWith("Local game hosted on port")) return true;
 		if (text.startsWith("Commands are now ")) return true;
 		return false;

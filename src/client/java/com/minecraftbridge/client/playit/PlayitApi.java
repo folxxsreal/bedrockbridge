@@ -32,16 +32,16 @@ final class PlayitApi {
 	static Tunnel ensureBedrockTunnel(String secret, int localPort) throws IOException, InterruptedException {
 		for (Tunnel t : listBedrockUdpTunnels(secret, localPort)) {
 			if ("allocated".equals(t.allocStatus()) && t.displayAddress() != null && !t.displayAddress().isEmpty()) {
-				BedrockBridge.LOGGER.info("Túnel Playit existente: {} (id={})", t.displayAddress(), t.id());
+				BedrockBridge.LOGGER.info("Existing Playit tunnel: {} (id={})", t.displayAddress(), t.id());
 				return t;
 			}
 		}
 
 		String agentId = firstAgentId(secret);
 		if (agentId == null) {
-			throw new IOException("No se pudo encontrar agent_id (¿el daemon todavía no se registró?). Reintenta en 5 s.");
+			throw new IOException("Could not find agent_id (has the daemon registered yet?). Retry in 5 s.");
 		}
-		BedrockBridge.LOGGER.info("Creando túnel Bedrock UDP→{} via API (agent={}).", localPort, agentId);
+		BedrockBridge.LOGGER.info("Creating Bedrock UDP→{} tunnel via API (agent={}).", localPort, agentId);
 		createBedrockTunnel(secret, agentId, localPort);
 
 		for (int attempt = 0; attempt < 30; attempt++) {
@@ -52,7 +52,7 @@ final class PlayitApi {
 				}
 			}
 		}
-		throw new IOException("El túnel se creó pero no se asignó endpoint público en 60 s.");
+		throw new IOException("Tunnel was created but no public endpoint was allocated within 60 s.");
 	}
 
 	private static java.util.List<Tunnel> listBedrockUdpTunnels(String secret, int wantLocalPort) throws IOException, InterruptedException {
@@ -88,9 +88,9 @@ final class PlayitApi {
 	}
 
 	private static String firstAgentId(String secret) throws IOException, InterruptedException {
-		// /agents/rundata devuelve el UUID del agente directamente, sin depender
-		// de que haya tuneles previos. En cuentas frescas (caso tipico tras claim)
-		// no hay tuneles, asi que /tunnels/list devolvia null y rompia el create.
+		// /agents/rundata returns the agent UUID directly, without relying on existing
+		// tunnels. Fresh accounts (typical right after claim) have no tunnels, so
+		// /tunnels/list returned null and broke the create call.
 		JsonObject resp = post("/agents/rundata", new JsonObject(), secret);
 		return resp.has("agent_id") ? resp.get("agent_id").getAsString() : null;
 	}
@@ -119,7 +119,7 @@ final class PlayitApi {
 		post("/tunnels/create", req, secret);
 	}
 
-	// Backoff entre reintentos cuando la llamada falla por red o 5xx.
+	// Backoff between retries when the call fails because of network or 5xx.
 	private static final long[] RETRY_DELAYS_MS = {1000, 3000, 7000};
 
 	private static JsonObject post(String path, JsonObject body, String secret) throws IOException, InterruptedException {
@@ -133,7 +133,7 @@ final class PlayitApi {
 					throw e;
 				}
 				long delay = RETRY_DELAYS_MS[attempt];
-				BedrockBridge.LOGGER.warn("Playit API {} falló ({}), reintentando en {}ms (intento {}/{})",
+				BedrockBridge.LOGGER.warn("Playit API {} failed ({}), retrying in {}ms (attempt {}/{})",
 						path, e.getMessage(), delay, attempt + 1, RETRY_DELAYS_MS.length);
 				Thread.sleep(delay);
 			}
@@ -164,14 +164,14 @@ final class PlayitApi {
 		return data != null && data.isJsonObject() ? data.getAsJsonObject() : new JsonObject();
 	}
 
-	// Reintentar solo en fallas de red o 5xx del server. Errores 4xx (validación,
-	// auth) son determinísticos y reintentarlos no ayuda — devolverlos ya.
+	// Only retry on network failures or 5xx from the server. 4xx errors (validation,
+	// auth) are deterministic and retrying doesn't help — return them as-is.
 	private static boolean isTransient(IOException e) {
 		String msg = e.getMessage();
-		if (msg == null) return true; // socket cerrado, dns, etc.
+		if (msg == null) return true; // closed socket, dns, etc.
 		if (msg.contains("HTTP 5")) return true;
 		if (msg.contains("HTTP 408") || msg.contains("HTTP 429")) return true;
-		if (msg.contains("HTTP 4")) return false; // 4xx no transitorio
+		if (msg.contains("HTTP 4")) return false; // 4xx not transient
 		return true;
 	}
 

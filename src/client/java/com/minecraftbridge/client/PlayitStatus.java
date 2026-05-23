@@ -1,13 +1,14 @@
 package com.minecraftbridge.client;
 
-// Estado público del túnel Playit, leído por el HUD overlay y escrito por PlayitManager.
-// Volatile porque writes vienen del worker thread de Playit y reads del render thread.
+// Public Playit tunnel state, read by the HUD overlay and written by PlayitManager.
+// Volatile because writes come from the Playit worker thread and reads from the
+// render thread.
 public enum PlayitStatus {
-	IDLE,           // LAN cerrada o "Compartir con Bedrock" desactivado
-	BOOTSTRAPPING,  // bajando binarios, claim, o levantando daemon
-	CLAIMING,       // esperando que el usuario apruebe en el browser
-	ONLINE,         // túnel activo con endpoint público
-	ERROR;          // último intento falló
+	IDLE,           // LAN closed or "Share with Bedrock" disabled
+	BOOTSTRAPPING,  // downloading binaries, claim, or launching daemon
+	CLAIMING,       // waiting for the user to approve in the browser
+	ONLINE,         // tunnel active with public endpoint
+	ERROR;          // last attempt failed
 
 	private static volatile PlayitStatus current = IDLE;
 	private static volatile String detail = "";

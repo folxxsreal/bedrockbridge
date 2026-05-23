@@ -10,16 +10,16 @@ import net.minecraft.network.chat.Style;
 
 import java.net.URI;
 
-// Estilo consistente para todos los mensajes que BedrockBridge muestra en chat.
-// Centralizado acá para que el día de mañana cambiar la voz del mod sea un solo archivo.
+// Consistent styling for every BedrockBridge chat message. Centralized here so
+// changing the mod's voice in the future is a single-file edit.
 public final class Chat {
 
 	public static final String TAG = "[BedrockBridge]";
 
 	private Chat() {}
 
-	// Despacha al render thread automáticamente, así los callers no se preocupan
-	// por threading. Geyser/Playit lifecycle corre en hilos de worker.
+	// Dispatches to the render thread automatically so callers don't have to
+	// worry about threading. Geyser/Playit lifecycle runs on worker threads.
 	public static void send(Component component) {
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> {
@@ -55,7 +55,7 @@ public final class Chat {
 		return Component.literal(text).withStyle(ChatFormatting.RED);
 	}
 
-	// Endpoint público clickeable: copia al portapapeles en click, muestra tooltip en hover.
+	// Clickable public endpoint: copies to clipboard on click, tooltip on hover.
 	public static MutableComponent copyable(String text) {
 		return Component.literal(text).withStyle(
 				Style.EMPTY
@@ -63,7 +63,7 @@ public final class Chat {
 						.withUnderlined(true)
 						.withClickEvent(new ClickEvent.CopyToClipboard(text))
 						.withHoverEvent(new HoverEvent.ShowText(
-								Component.literal("Click para copiar").withStyle(ChatFormatting.GRAY))));
+								Component.literal(Lang.get("bedrockbridge.chat.click_to_copy")).withStyle(ChatFormatting.GRAY))));
 	}
 
 	public static MutableComponent link(String url) {
@@ -73,13 +73,13 @@ public final class Chat {
 						.withUnderlined(true)
 						.withClickEvent(new ClickEvent.OpenUrl(URI.create(url)))
 						.withHoverEvent(new HoverEvent.ShowText(
-								Component.literal("Click para abrir").withStyle(ChatFormatting.GRAY))));
+								Component.literal(Lang.get("bedrockbridge.chat.click_to_open")).withStyle(ChatFormatting.GRAY))));
 	}
 
-	// Helper para enviar un error con sugerencia en una sola línea.
+	// Helper to send an error plus a hint on a single line.
 	public static void error(String message, String hint) {
 		MutableComponent c = header()
-				.append(err("Error: " + message))
+				.append(err(Lang.get("bedrockbridge.chat.error_prefix") + message))
 				.append(Component.literal("  "))
 				.append(muted("(" + hint + ")"));
 		send(c);

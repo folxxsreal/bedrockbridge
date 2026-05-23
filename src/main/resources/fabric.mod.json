@@ -3,12 +3,12 @@
 	"id": "bedrockbridge",
 	"version": "${version}",
 	"name": "BedrockBridge",
-	"description": "Comparte tu mundo de Minecraft Java con jugadores de Bedrock con un solo botón.",
+	"description": "Share your Minecraft Java world with Bedrock players in a single click.",
 	"authors": [
-		"dnixxv"
+		"folxxsreal"
 	],
 	"contact": {
-		"homepage": "https://github.com/dnixxv/bedrockbridge"
+		"homepage": "https://github.com/folxxsreal/bedrockbridge"
 	},
 	"license": "MIT",
 	"icon": "assets/bedrockbridge/icon.png",

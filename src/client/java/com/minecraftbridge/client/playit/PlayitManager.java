@@ -2,6 +2,7 @@ package com.minecraftbridge.client.playit;
 
 import com.minecraftbridge.BedrockBridge;
 import com.minecraftbridge.client.Chat;
+import com.minecraftbridge.client.Lang;
 import com.minecraftbridge.client.PlayitStatus;
 import com.minecraftbridge.playit.PlayitBinaries;
 import net.fabricmc.loader.api.FabricLoader;
@@ -32,8 +33,8 @@ public final class PlayitManager {
 	private Path binDir;
 	private Path secretPath;
 	private Path daemonLogPath;
-	// String porque en Windows es un named pipe (\\.\pipe\...), no un path de archivo.
-	// El daemon Rust elige bind() vs CreateNamedPipe() según el prefijo.
+	// String because on Windows this is a named pipe (\\.\pipe\...), not a file path.
+	// The Rust daemon picks bind() vs CreateNamedPipe() based on the prefix.
 	private String daemonSocketArg;
 
 	private volatile Process daemonProcess;
@@ -44,7 +45,7 @@ public final class PlayitManager {
 	private volatile boolean wantDaemonAlive = false;
 	private final AtomicReference<String> lastAnnouncedEndpoint = new AtomicReference<>();
 
-	// Backoff progresivo entre reintentos de restart del daemon, en segundos.
+	// Progressive backoff between daemon restart attempts, in seconds.
 	private static final int[] RESTART_BACKOFF_SEC = {5, 15, 45};
 
 	private PlayitManager() {}
@@ -57,10 +58,10 @@ public final class PlayitManager {
 		daemonLogPath = stateDir.resolve("playit.log");
 		String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
 		if (os.contains("win")) {
-			// Named pipe propio para no chocar con un playitd-system instalado.
+			// Dedicated named pipe so we don't collide with a system-installed playitd.
 			daemonSocketArg = "\\\\.\\pipe\\bedrockbridge-playit";
 		} else {
-			// Unix socket file dentro del state dir.
+			// Unix socket file inside the state dir.
 			daemonSocketArg = stateDir.resolve("playit.sock").toString();
 		}
 	}
@@ -70,10 +71,10 @@ public final class PlayitManager {
 	public synchronized void start() {
 		initPaths();
 		if (daemonProcess != null && daemonProcess.isAlive()) {
-			BedrockBridge.LOGGER.info("Playit daemon ya está corriendo, no se relanza.");
+			BedrockBridge.LOGGER.info("Playit daemon already running, skipping relaunch.");
 			return;
 		}
-		PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, "preparando");
+		PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, Lang.get("bedrockbridge.status.preparing"));
 		new Thread(this::startAsync, "BedrockBridge-Playit-Bootstrap").start();
 	}
 
@@ -89,22 +90,22 @@ public final class PlayitManager {
 				startWatchdog();
 				ensureTunnelAsync();
 			} else {
-				Chat.error("Esperando claim", "abrí el link de arriba en el navegador");
+				Chat.error(Lang.get("bedrockbridge.chat.waiting_claim"), Lang.get("bedrockbridge.chat.waiting_claim_hint"));
 			}
 		} catch (UnsupportedOperationException e) {
-			BedrockBridge.LOGGER.warn("Plataforma sin soporte de Playit: {}", e.getMessage());
-			PlayitStatus.set(PlayitStatus.ERROR, "plataforma sin túnel");
-			Chat.error("Playit no soportado en esta plataforma", e.getMessage());
+			BedrockBridge.LOGGER.warn("Platform has no Playit support: {}", e.getMessage());
+			PlayitStatus.set(PlayitStatus.ERROR, Lang.get("bedrockbridge.status.platform_no_tunnel"));
+			Chat.error(Lang.get("bedrockbridge.chat.unsupported_platform"), e.getMessage());
 		} catch (Exception e) {
-			BedrockBridge.LOGGER.error("Fallo al iniciar Playit", e);
+			BedrockBridge.LOGGER.error("Failed to start Playit", e);
 			PlayitStatus.set(PlayitStatus.ERROR, e.getMessage());
-			Chat.error("Playit no arrancó: " + e.getMessage(),
-					"revisá los logs y reabrí LAN");
+			Chat.error(Lang.get("bedrockbridge.chat.playit_failed_prefix") + e.getMessage(),
+					Lang.get("bedrockbridge.chat.check_logs_hint"));
 		}
 	}
 
-	// Detecta si el daemon muere inesperadamente y lo relanza con backoff exponencial.
-	// Termina cuando stop() limpia wantDaemonAlive o tras agotar los reintentos.
+	// Detects when the daemon dies unexpectedly and relaunches it with exponential
+	// backoff. Exits when stop() clears wantDaemonAlive or after retries are exhausted.
 	private void startWatchdog() {
 		if (watchdogThread != null && watchdogThread.isAlive()) return;
 		watchdogThread = new Thread(() -> {
@@ -123,17 +124,17 @@ public final class PlayitManager {
 				}
 				if (!wantDaemonAlive) return;
 				if (attempt >= RESTART_BACKOFF_SEC.length) {
-					BedrockBridge.LOGGER.error("Daemon Playit murió y agotamos {} reintentos, me rindo.", RESTART_BACKOFF_SEC.length);
-					PlayitStatus.set(PlayitStatus.ERROR, "daemon no se recupera");
-					Chat.error("El túnel cayó y no se recupera tras varios intentos",
-							"cerrá LAN y reabrila para volver a probar");
+					BedrockBridge.LOGGER.error("Playit daemon died and {} retries exhausted, giving up.", RESTART_BACKOFF_SEC.length);
+					PlayitStatus.set(PlayitStatus.ERROR, Lang.get("bedrockbridge.status.daemon_no_recover"));
+					Chat.error(Lang.get("bedrockbridge.chat.tunnel_dead"),
+							Lang.get("bedrockbridge.chat.tunnel_dead_hint"));
 					return;
 				}
 				int delaySec = RESTART_BACKOFF_SEC[attempt++];
-				BedrockBridge.LOGGER.warn("Daemon Playit murió (exit={}). Relanzando en {}s (intento {}/{}).",
+				BedrockBridge.LOGGER.warn("Playit daemon died (exit={}). Relaunching in {}s (attempt {}/{}).",
 						p.exitValue(), delaySec, attempt, RESTART_BACKOFF_SEC.length);
-				PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, "reintentando túnel (" + attempt + "/" + RESTART_BACKOFF_SEC.length + ")");
-				Chat.send(Chat.header().append(Chat.warn("Túnel cayó · reintentando en " + delaySec + "s")));
+				PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, Lang.get("bedrockbridge.status.retrying", attempt, RESTART_BACKOFF_SEC.length));
+				Chat.send(Chat.header().append(Chat.warn(Lang.get("bedrockbridge.chat.tunnel_down", delaySec))));
 				try {
 					Thread.sleep(delaySec * 1000L);
 				} catch (InterruptedException e) {
@@ -143,10 +144,10 @@ public final class PlayitManager {
 				if (!wantDaemonAlive) return;
 				try {
 					launchDaemon(daemonPath);
-					Chat.send(Chat.header().append(Chat.ok("Túnel restablecido")));
-					PlayitStatus.set(PlayitStatus.ONLINE, lastAnnouncedEndpoint.get() == null ? "reconectado" : lastAnnouncedEndpoint.get());
+					Chat.send(Chat.header().append(Chat.ok(Lang.get("bedrockbridge.chat.tunnel_restored"))));
+					PlayitStatus.set(PlayitStatus.ONLINE, lastAnnouncedEndpoint.get() == null ? Lang.get("bedrockbridge.status.reconnected") : lastAnnouncedEndpoint.get());
 				} catch (IOException e) {
-					BedrockBridge.LOGGER.error("Restart de daemon falló", e);
+					BedrockBridge.LOGGER.error("Daemon restart failed", e);
 				}
 			}
 		}, "BedrockBridge-Playit-Watchdog");
@@ -168,10 +169,10 @@ public final class PlayitManager {
 					announceEndpoint(t.displayAddress());
 				}
 			} catch (Exception e) {
-				BedrockBridge.LOGGER.error("Fallo al asegurar túnel Playit", e);
-				PlayitStatus.set(PlayitStatus.ERROR, "túnel API falló");
-				Chat.error("No se pudo crear el túnel: " + e.getMessage(),
-						"creá uno manual en playit.gg/account/tunnels (UDP, local 19132)");
+				BedrockBridge.LOGGER.error("Failed to ensure Playit tunnel", e);
+				PlayitStatus.set(PlayitStatus.ERROR, Lang.get("bedrockbridge.status.tunnel_api_failed"));
+				Chat.error(Lang.get("bedrockbridge.chat.tunnel_create_failed_prefix") + e.getMessage(),
+						Lang.get("bedrockbridge.chat.tunnel_create_manual_hint"));
 			}
 		}, "BedrockBridge-Playit-TunnelResolver").start();
 	}
@@ -192,31 +193,31 @@ public final class PlayitManager {
 	private static final Pattern SECRET_LINE =
 			Pattern.compile("\\s*secret_key\\s*=\\s*\"([0-9a-fA-F]{64})\"\\s*");
 
-	// Claim flow purely en Java. Sin spawn de playit-cli — el daemon es el único
-	// binario que necesitamos por plataforma. Ver PlayitClaim para el detalle de
-	// los endpoints /claim/setup y /claim/exchange.
+	// Pure-Java claim flow. No playit-cli spawn — the daemon is the only binary
+	// we need per platform. See PlayitClaim for the /claim/setup and
+	// /claim/exchange endpoint details.
 	private void runClaimFlow() throws IOException, InterruptedException {
-		PlayitStatus.set(PlayitStatus.CLAIMING, "abrí el link en el browser");
+		PlayitStatus.set(PlayitStatus.CLAIMING, Lang.get("bedrockbridge.status.open_link_browser"));
 		claimThread = Thread.currentThread();
 		String code = PlayitClaim.generateCode();
-		BedrockBridge.LOGGER.info("Playit claim code generado: {}", code);
+		BedrockBridge.LOGGER.info("Playit claim code generated: {}", code);
 		announceClaimUrl(PlayitClaim.claimUrl(code));
 
 		PlayitClaim.waitForUserAcceptance(code);
 		String secret = PlayitClaim.exchangeForSecret(code);
 		claimThread = null;
 		if (!secret.matches("[0-9a-fA-F]{64}")) {
-			throw new IOException("Secret de Playit con formato inesperado: " + secret.length() + " chars");
+			throw new IOException("Playit secret has unexpected format: " + secret.length() + " chars");
 		}
 		Files.writeString(secretPath, "secret_key = \"" + secret + "\"\n", StandardCharsets.UTF_8);
-		BedrockBridge.LOGGER.info("Secret de Playit guardado en {}", secretPath);
-		PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, "conectando túnel");
-		Chat.send(Chat.header().append(Chat.ok("Claim aceptado · arrancando túnel...")));
+		BedrockBridge.LOGGER.info("Playit secret saved to {}", secretPath);
+		PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, Lang.get("bedrockbridge.status.connecting_tunnel"));
+		Chat.send(Chat.header().append(Chat.ok(Lang.get("bedrockbridge.chat.claim_accepted"))));
 	}
 
 	private void launchDaemon(Path daemonPath) throws IOException {
-		// Solo en Linux/Mac borrar el socket file viejo; en Windows el "socket"
-		// es un named pipe que el daemon registra al arrancar (no es file).
+		// Only on Linux/Mac do we delete the old socket file; on Windows the "socket"
+		// is a named pipe that the daemon registers on startup (not a file).
 		if (!daemonSocketArg.startsWith("\\\\")) {
 			Files.deleteIfExists(Path.of(daemonSocketArg));
 		}
@@ -226,7 +227,7 @@ public final class PlayitManager {
 				"--socket-path", daemonSocketArg)
 				.redirectErrorStream(true);
 		daemonProcess = pb.start();
-		BedrockBridge.LOGGER.info("Playit daemon arrancado (pid={}).", daemonProcess.pid());
+		BedrockBridge.LOGGER.info("Playit daemon started (pid={}).", daemonProcess.pid());
 
 		daemonReaderThread = new Thread(this::readDaemonOutput, "BedrockBridge-Playit-Daemon-Reader");
 		daemonReaderThread.setDaemon(true);
@@ -251,17 +252,17 @@ public final class PlayitManager {
 				}
 			}
 		} catch (IOException e) {
-			BedrockBridge.LOGGER.warn("Reader del daemon Playit terminó: {}", e.getMessage());
+			BedrockBridge.LOGGER.warn("Playit daemon reader terminated: {}", e.getMessage());
 		}
 	}
 
 	public synchronized void stop() {
-		wantDaemonAlive = false; // pará el watchdog antes de matar el proceso
+		wantDaemonAlive = false; // stop the watchdog before killing the process
 		if (watchdogThread != null) {
 			watchdogThread.interrupt();
 			watchdogThread = null;
 		}
-		// El claim flow es polling HTTP; interrumpir el hilo lo aborta limpio.
+		// The claim flow is HTTP polling; interrupting the thread aborts it cleanly.
 		Thread claim = claimThread;
 		if (claim != null) {
 			claim.interrupt();
@@ -269,7 +270,7 @@ public final class PlayitManager {
 		}
 		if (daemonProcess != null) {
 			daemonProcess.destroy();
-			BedrockBridge.LOGGER.info("Playit daemon parado.");
+			BedrockBridge.LOGGER.info("Playit daemon stopped.");
 			daemonProcess = null;
 		}
 		lastAnnouncedEndpoint.set(null);
@@ -277,20 +278,20 @@ public final class PlayitManager {
 	}
 
 	private void announceClaimUrl(String url) {
-		// Primera vez que el usuario usa el mod: necesita autorizar el agente.
-		// Mostramos el link grande y clickeable + instrucción mínima.
-		Chat.send(Chat.header().append(Chat.warn("Primera vez · necesitamos autorizar el túnel")));
-		MutableComponent line = Chat.muted("  Abrí este link y aceptá: ").append(Chat.link(url));
+		// First time the user runs the mod: they need to authorize the agent.
+		// Show the big clickable link plus a minimal instruction.
+		Chat.send(Chat.header().append(Chat.warn(Lang.get("bedrockbridge.chat.first_time_authorize"))));
+		MutableComponent line = Chat.muted(Lang.get("bedrockbridge.chat.open_and_accept")).append(Chat.link(url));
 		Chat.send(line);
 	}
 
 	private void announceEndpoint(String endpoint) {
 		PlayitStatus.set(PlayitStatus.ONLINE, endpoint);
-		// Reemplazo del placeholder "Internet: preparando túnel..." con el endpoint real.
-		MutableComponent line = Chat.label("Internet")
+		// Replaces the "Internet: preparing tunnel..." placeholder with the real endpoint.
+		MutableComponent line = Chat.label(Lang.get("bedrockbridge.chat.label.internet"))
 				.append(Chat.copyable(endpoint))
 				.append(Component.literal("  "))
-				.append(Chat.muted("[click para copiar]"));
+				.append(Chat.muted(Lang.get("bedrockbridge.chat.click_to_copy_short")));
 		Chat.send(line);
 	}
 }

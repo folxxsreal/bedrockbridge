@@ -1,87 +1,89 @@
 # BedrockBridge
 
-Mod Fabric para Minecraft Java que permite a jugadores de **Minecraft Bedrock** (celular, consola, tablet, Windows 10) conectarse a tu mundo single-player **con un solo botón**. Sin port-forwarding, sin configurar nada, sin cuenta de Microsoft en el invitado.
+A Fabric mod for Minecraft Java that lets **Minecraft Bedrock** players (phone, console, tablet, Windows 10) join your single-player world **with a single click**. No port-forwarding, no setup, no Microsoft account on the guest side.
 
-Tildás "Compartir con Bedrock" en la pantalla de "Open to LAN" y BedrockBridge se encarga del resto:
-1. Arranca **Geyser** para traducir el protocolo Java ↔ Bedrock.
-2. Arranca **Floodgate** para que los jugadores Bedrock entren sin tener cuenta Java.
-3. Arranca un túnel **Playit.gg** UDP que expone el puerto 19132 a internet, así tu invitado se conecta desde cualquier red sin que abras puertos en tu router.
+Tick "Share with Bedrock" on the "Open to LAN" screen and BedrockBridge handles the rest:
+1. Starts **Geyser** to translate the Java ↔ Bedrock protocol.
+2. Starts **Floodgate** so Bedrock players can join without a Java account.
+3. Starts a **Playit.gg** UDP tunnel that exposes port 19132 to the internet, so your guest can connect from any network without you opening router ports.
 
-Te aparece el endpoint público en chat (ej. `means-confidentiality.gl.at.ply.gg:6740`); el invitado lo pega en MC Bedrock → Servers → Add Server y entra.
+The public endpoint shows up in chat (e.g. `means-confidentiality.gl.at.ply.gg:6740`); the guest pastes it into MC Bedrock → Servers → Add Server and they're in.
 
 ---
 
-## Requisitos
+## Requirements
 
 - Minecraft Java **1.26.1.2** (alias 26.1.2).
 - Fabric Loader **>= 0.19.2**.
 - Java **25** runtime.
 - Fabric API.
-- Plataformas soportadas para el túnel Playit:
-  - **Linux** x86_64 y aarch64 (Raspberry Pi 4+, etc.)
+- Supported platforms for the Playit tunnel:
+  - **Linux** x86_64 and aarch64 (Raspberry Pi 4+, etc.)
   - **Windows** x86_64
-  - **macOS**: no soportado por ahora (Playit no publica binarios oficiales). Geyser y Floodgate igual funcionan para conexiones LAN locales — solo no podés exponer a internet automáticamente.
+  - **macOS**: not supported for now (Playit doesn't publish official binaries). Geyser and Floodgate still work for local LAN connections — you just can't expose to the internet automatically.
 
-Las dependencias del mod (Geyser-Fabric, Floodgate-Fabric, daemon Playit) se descargan automáticamente — no hay que instalar nada a mano.
-
----
-
-## Instalación (usuarios finales)
-
-1. Bajá el `.jar` de BedrockBridge de la última release.
-2. Copialo a `~/.minecraft/mods/` (o el `mods/` de tu launcher).
-3. Asegurate de tener también `fabric-api` en `mods/`.
-4. Arrancá Minecraft con el perfil Fabric.
-
-En el **primer uso** abrir LAN con "Compartir con Bedrock" activo va a:
-1. Descargar Geyser/Floodgate jars y binarios Playit (~25 MB total, una sola vez).
-2. Mostrarte en chat un link **`https://playit.gg/claim/...`** para vincular tu cuenta Playit (gratis, no requiere tarjeta).
-3. Abrís el link, hacés "Add Agent", te crea el túnel UDP, y te aparece el endpoint público en chat.
-
-Próximas veces el endpoint aparece directo sin claim.
+The mod's dependencies (Geyser-Fabric, Floodgate-Fabric, Playit daemon) are downloaded automatically — no manual installation required.
 
 ---
 
-## Cómo usar
+## Installation (end users)
 
-1. Carga tu mundo single-player.
+1. Download the BedrockBridge `.jar` from the latest release.
+2. Drop it into `~/.minecraft/mods/` (or your launcher's `mods/` directory).
+3. Make sure you also have `fabric-api` in `mods/`.
+4. Launch Minecraft with the Fabric profile.
+
+On **first use**, opening LAN with "Share with Bedrock" ticked will:
+1. Download the Geyser/Floodgate jars and Playit binaries (~25 MB total, once).
+2. Show a **`https://playit.gg/claim/...`** link in chat to link your Playit account (free, no credit card needed).
+3. You open the link, click "Add Agent", it creates the UDP tunnel, and the public endpoint appears in chat.
+
+After the first time, the endpoint shows up directly without a claim.
+
+---
+
+## How to use
+
+1. Load your single-player world.
 2. **Esc** → **Open to LAN**.
-3. Confirmá que **"Compartir con Bedrock"** esté tildado (default: sí).
+3. Make sure **"Share with Bedrock"** is ticked (default: yes).
 4. **Start LAN World**.
-5. En chat te aparecen 3 líneas, la última con la dirección pública para Bedrock.
-6. Pasale ese endpoint a tu invitado: `Servers → Add Server → Name: lo que sea, Address: nombre.gl.at.ply.gg, Port: número`.
-7. El invitado tocá el server, entra sin ningún prompt extra.
+5. Three lines appear in chat, the last one with the public address for Bedrock.
+6. Pass that endpoint to your guest: `Servers → Add Server → Name: whatever, Address: name.gl.at.ply.gg, Port: number`.
+7. The guest taps the server and joins without any extra prompt.
 
-Para apagar: cerrá el mundo o **Save and Quit to Title**. BedrockBridge para Geyser y el túnel automáticamente.
+To shut it down: close the world or **Save and Quit to Title**. BedrockBridge stops Geyser and the tunnel automatically.
 
-Si destildás "Compartir con Bedrock" antes de abrir LAN, te quedás con LAN normal de Java solo (sin Geyser, sin Playit) — útil cuando solo querés jugar con amigos en la misma red local.
+If you untick "Share with Bedrock" before opening LAN, you're left with regular Java LAN only (no Geyser, no Playit) — useful when you just want to play with friends on the same local network.
+
+The chat messages are localized: the mod auto-detects your Minecraft language and shows messages in Spanish (any `es_*` locale) or English (everything else).
 
 ---
 
 ## Troubleshooting
 
-### "Failed to retrieve profile key pair" en logs
-Normal en desarrollo (cuenta dev de Fabric). Ignorable.
+### "Failed to retrieve profile key pair" in logs
+Normal in development (Fabric's dev account). Ignorable.
 
-### El endpoint público no aparece en chat
-- Revisá que tu PC tenga internet (Playit necesita conectarse a su cloud).
-- Si la primera vez ves la URL de claim pero el endpoint no llega, abrí la URL y dale "Add Agent". El túnel se crea después.
+### The public endpoint never shows up in chat
+- Check your PC has internet access (Playit needs to reach its cloud).
+- If the first time you see the claim URL but the endpoint never arrives, open the URL and click "Add Agent". The tunnel is created after that.
 
-### "Desconexión del anfitrión" en el celular tras unos segundos
-- Si estás testeando con VPN (Cloudflare WARP, Proton free), eso es esperable — esas VPNs pierden paquetes UDP. Probá con datos móviles reales o pedile a alguien afuera que pruebe.
+### "Host disconnect" on the phone after a few seconds
+- If you're testing with a VPN (Cloudflare WARP, Proton free), that's expected — those VPNs drop UDP packets. Try real mobile data or have someone outside your network test it.
 
 ### "Playit API HTTP 401: not authorized"
-- El secret de Playit está corrupto. Borrá `<gameDir>/bedrockbridge/playit.toml` y reabrí LAN — vas a tener que claimear de nuevo.
+- The Playit secret is corrupt. Delete `<gameDir>/bedrockbridge/playit.toml` and reopen LAN — you'll have to claim again.
 
-### Solo veo 51 mods cargados (debería haber 100+)
-- El Floodgate jar no se está cargando. Verificá que `<gameDir>/bedrockbridge/` exista; si corrés desde IntelliJ con `runClient`, asegurate que la tarea Gradle `downloadEmbeddedJars` haya bajado los jars a `libs/`.
+### Only 51 mods loaded (should be 100+)
+- The Floodgate jar isn't loading. Check that `<gameDir>/bedrockbridge/` exists; if you're running from IntelliJ with `runClient`, make sure the Gradle `downloadEmbeddedJars` task pulled the jars into `libs/`.
 
-### Quiero cambiar de cuenta Playit
-- Borrá `<gameDir>/bedrockbridge/playit.toml` y reabrí LAN para arrancar un claim nuevo.
+### I want to switch Playit accounts
+- Delete `<gameDir>/bedrockbridge/playit.toml` and reopen LAN to trigger a fresh claim.
 
 ---
 
-## Build desde fuente
+## Build from source
 
 ```bash
 git clone <repo-url>
@@ -89,41 +91,43 @@ cd bedrockbridge
 ./gradlew build
 ```
 
-La tarea `downloadEmbeddedJars` baja Geyser-Fabric y Floodgate-Fabric automáticamente con SHA256/SHA512 pinneado (no se commitean al repo). El `.jar` final queda en `build/libs/`.
+The `downloadEmbeddedJars` task pulls Geyser-Fabric and Floodgate-Fabric automatically with pinned SHA256/SHA512 (not committed to the repo). The final `.jar` lands in `build/libs/`.
 
-Para correr el cliente Minecraft con el mod cargado en dev:
+To run the Minecraft client with the mod loaded in dev:
 ```bash
 ./gradlew runClient
 ```
 
 ---
 
-## Arquitectura
+## Architecture
 
-- **`com.example.BedrockBridge`** — mod entrypoint, init liviano.
-- **`com.example.BedrockBridgePreLaunch`** — corre ANTES que Geyser para escribir `config/Geyser-Fabric/config.yml` con `auth-type: floodgate`.
-- **`com.example.client.BedrockBridgeClient`** — registra el checkbox en `ShareToLanScreen` y polea LAN state via `ClientTickEvents`.
-- **`com.example.state.BedrockBridgeState`** — flag `shareWithBedrock` compartido entre cliente y server thread.
-- **`com.example.mixin.GeyserModBootstrapMixin`** — Mixin que cancela `onGeyserEnable()` si el flag está false, así el checkbox apaga Geyser de verdad.
-- **`com.example.playit.PlayitBinaries`** — descarga lazy de `playit-linux-amd64` + `playit-cli-linux-amd64` v1.0.4 con SHA256 verificado, a `<gameDir>/bedrockbridge/bin/`.
-- **`com.example.client.playit.PlayitManager`** — orquesta claim flow, lanza el daemon como subproceso, lee stdout en hilo aparte.
-- **`com.example.client.playit.PlayitApi`** — cliente REST mínimo contra `api.playit.gg` para crear/listar tunnels.
+- **`com.minecraftbridge.BedrockBridge`** — mod entrypoint, lightweight init.
+- **`com.minecraftbridge.BedrockBridgePreLaunch`** — runs BEFORE Geyser to write `config/Geyser-Fabric/config.yml` with `auth-type: floodgate`.
+- **`com.minecraftbridge.client.BedrockBridgeClient`** — registers the checkbox on `ShareToLanScreen` and polls LAN state via `ClientTickEvents`.
+- **`com.minecraftbridge.client.Lang`** — locale-aware string lookup that picks Spanish/English based on the client's MC language.
+- **`com.minecraftbridge.state.BedrockBridgeState`** — `shareWithBedrock` flag shared between client and server thread.
+- **`com.minecraftbridge.mixin.GeyserModBootstrapMixin`** — Mixin that cancels `onGeyserEnable()` if the flag is false, so the checkbox actually disables Geyser.
+- **`com.minecraftbridge.playit.PlayitBinaries`** — lazy download of the Playit daemon (Linux amd64/aarch64 or Windows x86_64) with SHA256 verification, into `<gameDir>/bedrockbridge/bin/`.
+- **`com.minecraftbridge.client.playit.PlayitManager`** — orchestrates the claim flow, launches the daemon as a subprocess, reads stdout on its own thread.
+- **`com.minecraftbridge.client.playit.PlayitClaim`** — pure-Java implementation of the Playit claim flow (`/claim/setup` polling + `/claim/exchange`).
+- **`com.minecraftbridge.client.playit.PlayitApi`** — minimal REST client against `api.playit.gg` to create/list tunnels.
 
-Geyser-Fabric + Floodgate-Fabric se embeben como nested JIJ vía el bloque `jar` de `build.gradle` y `fabric.mod.json`'s `jars` array.
+Geyser-Fabric + Floodgate-Fabric are embedded as nested JIJ via the `jar` block in `build.gradle` and `fabric.mod.json`'s `jars` array.
 
 ---
 
-## Créditos
+## Credits
 
-BedrockBridge es solo el pegamento; el trabajo pesado lo hacen:
+BedrockBridge is just the glue; the heavy lifting is done by:
 
-- **[GeyserMC/Geyser](https://github.com/GeyserMC/Geyser)** (MIT) — traducción de protocolos Bedrock ↔ Java.
-- **[GeyserMC/Floodgate-Modded](https://github.com/GeyserMC/Floodgate-Modded)** (MIT) — autenticación de jugadores Bedrock sin cuenta Java.
-- **[playit-cloud/playit-agent](https://github.com/playit-cloud/playit-agent)** (BSD-2) — túnel UDP a internet sin port-forwarding.
-- **API client schema** adaptado de [maxomatic458/playit-minecraft-mod](https://github.com/maxomatic458/playit-minecraft-mod) (BSD-2, archivado).
+- **[GeyserMC/Geyser](https://github.com/GeyserMC/Geyser)** (MIT) — Bedrock ↔ Java protocol translation.
+- **[GeyserMC/Floodgate-Modded](https://github.com/GeyserMC/Floodgate-Modded)** (MIT) — authenticating Bedrock players without a Java account.
+- **[playit-cloud/playit-agent](https://github.com/playit-cloud/playit-agent)** (BSD-2) — UDP tunnel to the internet without port-forwarding.
+- **API client schema** adapted from [maxomatic458/playit-minecraft-mod](https://github.com/maxomatic458/playit-minecraft-mod) (BSD-2, archived).
 
 ---
 
 ## License
 
-CC0 1.0 Universal. Ver `LICENSE`.
+CC0 1.0 Universal. See `LICENSE`.

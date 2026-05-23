@@ -10,15 +10,15 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
-// Badge persistente en la esquina superior izquierda mostrando el estado del túnel.
-// Se oculta si Compartir con Bedrock está apagado o el mundo no está abierto,
-// para no contaminar la pantalla cuando no aplica.
+// Persistent badge in the top-left corner showing the tunnel status. Hidden when
+// Share with Bedrock is off or no world is open so it doesn't clutter the screen
+// when irrelevant.
 public class PlayitStatusHud implements HudElement {
 
 	private static final int PADDING_X = 4;
 	private static final int PADDING_Y = 3;
 	private static final int MARGIN = 6;
-	private static final int BG_COLOR = 0xC0_00_00_00; // negro semi-transparente
+	private static final int BG_COLOR = 0xC0_00_00_00; // semi-transparent black
 	private static final int TEXT_WHITE = 0xFF_FF_FF_FF;
 
 	@Override
@@ -29,7 +29,7 @@ public class PlayitStatusHud implements HudElement {
 		if (status == PlayitStatus.IDLE) return;
 
 		Minecraft mc = Minecraft.getInstance();
-		if (mc.screen != null) return; // ocultar cuando hay menú abierto
+		if (mc.screen != null) return; // hide while a menu is open
 		if (mc.options.hideGui) return;
 
 		Component text = buildBadge(status, PlayitStatus.detail());
@@ -52,10 +52,10 @@ public class PlayitStatusHud implements HudElement {
 			default -> ChatFormatting.GRAY;
 		};
 		String label = switch (status) {
-			case BOOTSTRAPPING -> "preparando";
-			case CLAIMING -> "esperando claim";
-			case ONLINE -> "ONLINE";
-			case ERROR -> "ERROR";
+			case BOOTSTRAPPING -> Lang.get("bedrockbridge.hud.preparing");
+			case CLAIMING -> Lang.get("bedrockbridge.hud.waiting_claim");
+			case ONLINE -> Lang.get("bedrockbridge.hud.online");
+			case ERROR -> Lang.get("bedrockbridge.hud.error");
 			default -> "";
 		};
 

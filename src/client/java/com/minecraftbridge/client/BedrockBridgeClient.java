@@ -26,7 +26,7 @@ public class BedrockBridgeClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		BedrockBridge.LOGGER.info("BedrockBridgeClient inicializado en el lado del cliente.");
+		BedrockBridge.LOGGER.info("BedrockBridgeClient initialized on the client side.");
 		ScreenEvents.AFTER_INIT.register(this::onScreenAfterInit);
 		HudElementRegistry.addLast(
 				Identifier.fromNamespaceAndPath(BedrockBridge.MOD_ID, "playit_status_hud"),
@@ -47,19 +47,19 @@ public class BedrockBridgeClient implements ClientModInitializer {
 		}
 
 		Checkbox checkbox = Checkbox.builder(
-				Component.literal("Compartir con Bedrock"),
+				Component.literal(Lang.get("bedrockbridge.checkbox.share_with_bedrock")),
 				Screens.getFont(screen)
 			)
 			.pos(10, height - 55)
 			.selected(BedrockBridgeState.shareWithBedrock)
 			.onValueChange((cb, value) -> {
 				BedrockBridgeState.shareWithBedrock = value;
-				BedrockBridge.LOGGER.info("Checkbox 'Compartir con Bedrock' cambiado a: {}", value);
+				BedrockBridge.LOGGER.info("'Share with Bedrock' checkbox toggled to: {}", value);
 			})
 			.build();
 
 		Screens.getWidgets(screen).add(checkbox);
-		BedrockBridge.LOGGER.info("Checkbox inyectado en ShareToLanScreen (estado inicial: {}).", BedrockBridgeState.shareWithBedrock);
+		BedrockBridge.LOGGER.info("Checkbox injected into ShareToLanScreen (initial state: {}).", BedrockBridgeState.shareWithBedrock);
 	}
 
 	private void onClientTick(Minecraft client) {
@@ -83,32 +83,32 @@ public class BedrockBridgeClient implements ClientModInitializer {
 	private void onLanOpened(Minecraft client) {
 		int port = client.getSingleplayerServer().getPort();
 		boolean share = BedrockBridgeState.shareWithBedrock;
-		BedrockBridge.LOGGER.info("¡Mundo abierto a LAN! Puerto Java: {} (shareWithBedrock={})", port, share);
+		BedrockBridge.LOGGER.info("World opened to LAN. Java port: {} (shareWithBedrock={})", port, share);
 
 		if (share) {
-			MutableComponent msg = Chat.header().append(Chat.ok("LAN abierta"));
+			MutableComponent msg = Chat.header().append(Chat.ok(Lang.get("bedrockbridge.chat.lan_opened")));
 			Chat.send(msg);
-			Chat.send(Chat.label("Java (LAN)").append(Chat.value(port)));
-			Chat.send(Chat.label("Bedrock (LAN)").append(Chat.value(19132))
-					.append(Component.literal(" ")).append(Chat.muted("(Floodgate activo)")));
-			Chat.send(Chat.label("Internet").append(Chat.muted("preparando túnel...")));
+			Chat.send(Chat.label(Lang.get("bedrockbridge.chat.label.java_lan")).append(Chat.value(port)));
+			Chat.send(Chat.label(Lang.get("bedrockbridge.chat.label.bedrock_lan")).append(Chat.value(19132))
+					.append(Component.literal(" ")).append(Chat.muted(Lang.get("bedrockbridge.chat.value.floodgate_active"))));
+			Chat.send(Chat.label(Lang.get("bedrockbridge.chat.label.internet")).append(Chat.muted(Lang.get("bedrockbridge.chat.value.preparing_tunnel"))));
 			PlayitManager.get().start();
 		} else {
 			MutableComponent msg = Chat.header()
-					.append(Chat.ok("LAN abierta en puerto "))
+					.append(Chat.ok(Lang.get("bedrockbridge.chat.lan_opened_java_only_prefix")))
 					.append(Chat.value(port))
 					.append(Component.literal(" "))
-					.append(Chat.muted("(solo Java — Bedrock desactivado)"));
+					.append(Chat.muted(Lang.get("bedrockbridge.chat.lan_opened_java_only_suffix")));
 			Chat.send(msg);
 		}
 	}
 
 	private void onLanClosed(Minecraft client) {
-		BedrockBridge.LOGGER.info("Mundo LAN cerrado.");
+		BedrockBridge.LOGGER.info("LAN world closed.");
 		PlayitManager.get().stop();
 		PlayitStatus.set(PlayitStatus.IDLE, "");
 		MutableComponent msg = Chat.header()
-				.append(Chat.muted("LAN cerrada · túnel parado"));
+				.append(Chat.muted(Lang.get("bedrockbridge.chat.lan_closed")));
 		Chat.send(msg);
 	}
 }
