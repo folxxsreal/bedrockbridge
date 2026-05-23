@@ -131,6 +131,10 @@ BedrockBridge is just the glue; the heavy lifting is done by:
 
 ---
 
+## Disclaimer
+
+BedrockBridge is not affiliated with, endorsed by, or sponsored by GeyserMC, Floodgate, or Playit.gg. All trademarks and project names belong to their respective owners.
+
 ## License
 
 CC0 1.0 Universal. See `LICENSE`.
