@@ -3,25 +3,42 @@ package com.example.client;
 import com.example.BedrockBridge;
 import com.example.client.playit.PlayitManager;
 import com.example.state.BedrockBridgeState;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Checkbox;
 import net.minecraft.client.gui.screens.ShareToLanScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
+import org.lwjgl.glfw.GLFW;
 
 public class BedrockBridgeClient implements ClientModInitializer {
 
 	private boolean lanWasOpen = false;
+	private KeyMapping toggleHudKey;
 
 	@Override
 	public void onInitializeClient() {
 		BedrockBridge.LOGGER.info("BedrockBridgeClient inicializado en el lado del cliente.");
-		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 		ScreenEvents.AFTER_INIT.register(this::onScreenAfterInit);
+		HudElementRegistry.addLast(
+				Identifier.fromNamespaceAndPath(BedrockBridge.MOD_ID, "playit_status_hud"),
+				new PlayitStatusHud());
+		KeyMapping.Category category = KeyMapping.Category.register(
+				Identifier.fromNamespaceAndPath(BedrockBridge.MOD_ID, "main"));
+		toggleHudKey = KeyMappingHelper.registerKeyMapping(new KeyMapping(
+				"key.bedrockbridge.toggle_hud",
+				InputConstants.Type.KEYSYM,
+				GLFW.GLFW_KEY_B,
+				category));
+		ClientTickEvents.END_CLIENT_TICK.register(this::onClientTick);
 	}
 
 	private void onScreenAfterInit(Minecraft client, net.minecraft.client.gui.screens.Screen screen, int width, int height) {
@@ -46,6 +63,10 @@ public class BedrockBridgeClient implements ClientModInitializer {
 	}
 
 	private void onClientTick(Minecraft client) {
+		while (toggleHudKey != null && toggleHudKey.consumeClick()) {
+			PlayitStatus.toggleHud();
+		}
+
 		boolean lanIsOpen = client.hasSingleplayerServer()
 				&& client.getSingleplayerServer() != null
 				&& client.getSingleplayerServer().isPublished();
@@ -85,6 +106,7 @@ public class BedrockBridgeClient implements ClientModInitializer {
 	private void onLanClosed(Minecraft client) {
 		BedrockBridge.LOGGER.info("Mundo LAN cerrado.");
 		PlayitManager.get().stop();
+		PlayitStatus.set(PlayitStatus.IDLE, "");
 		MutableComponent msg = Chat.header()
 				.append(Chat.muted("LAN cerrada · túnel parado"));
 		Chat.send(msg);

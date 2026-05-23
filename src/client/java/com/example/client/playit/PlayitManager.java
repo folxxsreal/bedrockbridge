@@ -2,6 +2,7 @@ package com.example.client.playit;
 
 import com.example.BedrockBridge;
 import com.example.client.Chat;
+import com.example.client.PlayitStatus;
 import com.example.playit.PlayitBinaries;
 import com.example.playit.PlayitBinaries.InstalledBinaries;
 import net.fabricmc.loader.api.FabricLoader;
@@ -61,6 +62,7 @@ public final class PlayitManager {
 			BedrockBridge.LOGGER.info("Playit daemon ya está corriendo, no se relanza.");
 			return;
 		}
+		PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, "preparando");
 		new Thread(this::startAsync, "BedrockBridge-Playit-Bootstrap").start();
 	}
 
@@ -78,6 +80,7 @@ public final class PlayitManager {
 			}
 		} catch (Exception e) {
 			BedrockBridge.LOGGER.error("Fallo al iniciar Playit", e);
+			PlayitStatus.set(PlayitStatus.ERROR, e.getMessage());
 			Chat.error("Playit no arrancó: " + e.getMessage(),
 					"revisá los logs y reabrí LAN");
 		}
@@ -98,6 +101,7 @@ public final class PlayitManager {
 				}
 			} catch (Exception e) {
 				BedrockBridge.LOGGER.error("Fallo al asegurar túnel Playit", e);
+				PlayitStatus.set(PlayitStatus.ERROR, "túnel API falló");
 				Chat.error("No se pudo crear el túnel: " + e.getMessage(),
 						"creá uno manual en playit.gg/account/tunnels (UDP, local 19132)");
 			}
@@ -121,6 +125,7 @@ public final class PlayitManager {
 			Pattern.compile("\\s*secret_key\\s*=\\s*\"([0-9a-fA-F]{64})\"\\s*");
 
 	private void runClaimFlow(Path cliPath) throws IOException, InterruptedException {
+		PlayitStatus.set(PlayitStatus.CLAIMING, "abrí el link en el browser");
 		String claimCode = exec(cliPath.toString(), "claim", "generate").trim();
 		BedrockBridge.LOGGER.info("Playit claim code generado: {}", claimCode);
 		String claimUrl = exec(cliPath.toString(), "claim", "url",
@@ -157,6 +162,7 @@ public final class PlayitManager {
 		}
 		Files.writeString(secretPath, "secret_key = \"" + secret + "\"\n", StandardCharsets.UTF_8);
 		BedrockBridge.LOGGER.info("Secret de Playit guardado en {}", secretPath);
+		PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, "conectando túnel");
 		Chat.send(Chat.header().append(Chat.ok("Claim aceptado · arrancando túnel...")));
 	}
 
@@ -208,6 +214,7 @@ public final class PlayitManager {
 			daemonProcess = null;
 		}
 		lastAnnouncedEndpoint.set(null);
+		PlayitStatus.set(PlayitStatus.IDLE, "");
 	}
 
 	private String exec(String... cmd) throws IOException, InterruptedException {
@@ -232,6 +239,7 @@ public final class PlayitManager {
 	}
 
 	private void announceEndpoint(String endpoint) {
+		PlayitStatus.set(PlayitStatus.ONLINE, endpoint);
 		// Reemplazo del placeholder "Internet: preparando túnel..." con el endpoint real.
 		MutableComponent line = Chat.label("Internet")
 				.append(Chat.copyable(endpoint))
