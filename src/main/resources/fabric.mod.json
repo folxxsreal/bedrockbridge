@@ -14,6 +14,9 @@
 	"icon": "assets/bedrockbridge/icon.png",
 	"environment": "*",
 	"entrypoints": {
+		"preLaunch": [
+			"com.example.BedrockBridgePreLaunch"
+		],
 		"main": [
 			"com.example.BedrockBridge"
 		],
@@ -35,6 +38,7 @@
 		"fabric-api": "*"
 	},
 	"jars": [
-		{ "file": "META-INF/jars/Geyser-Fabric-1153.jar" }
+		{ "file": "META-INF/jars/Geyser-Fabric-1153.jar" },
+		{ "file": "META-INF/jars/Floodgate-Fabric-2.2.6-b63.jar" }
 	]
 }

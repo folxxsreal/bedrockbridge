@@ -37,16 +37,12 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-	// Geyser-Fabric fat jar (build 1153 from download.geysermc.org).
-	// The Maven `geyser:fabric` artifact is only a thin wrapper without the core engine —
-	// the user-distributable fat jar (this one) bundles geyser:mod + :core + 40+ shaded libs.
-	// SHA256 verified at download time; pinned to a specific build for reproducibility.
-	// `compileOnly` lets our Mixins reference GeyserFabricBootstrap without bundling on the
-	// runtime classpath — the jar lands in our mod's META-INF/jars/ via the `jar` task below,
-	// where Fabric Loader discovers it as a JIJ nested mod at runtime.
-	// TODO(D7): convert this + the jar-task copy into a Gradle download task with SHA256 pinning
-	// so clones don't need the jar in the repo.
+	// Geyser-Fabric fat jar (build 1153) + Floodgate-Fabric (b63). Both embedded as
+	// nested JIJ via the `jar` task below; `compileOnly` keeps them off the dev classpath
+	// (Loom uses run/mods/ for that — see geyser-embedding-decisions memory).
+	// TODO(D7): convert to Gradle download task with SHA256/SHA512 pinning.
 	compileOnly files('libs/Geyser-Fabric-1153.jar')
+	compileOnly files('libs/Floodgate-Fabric-2.2.6-b63.jar')
 }
 
 processResources {
@@ -80,9 +76,12 @@ jar {
 		rename { "${it}_$projectName"}
 	}
 
-	// Embed Geyser-Fabric fat jar as a nested JIJ. Fabric Loader auto-discovers
-	// any *.jar under META-INF/jars/ at load time — no fabric.mod.json declaration needed.
+	// Embed Geyser-Fabric + Floodgate-Fabric as nested JIJ. Fabric Loader needs them
+	// declared explicitly in fabric.mod.json `jars` array — auto-scan doesn't happen.
 	from('libs/Geyser-Fabric-1153.jar') {
+		into 'META-INF/jars/'
+	}
+	from('libs/Floodgate-Fabric-2.2.6-b63.jar') {
 		into 'META-INF/jars/'
 	}
 }

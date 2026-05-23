@@ -63,12 +63,10 @@ public class BedrockBridgeClient implements ClientModInitializer {
 		BedrockBridge.LOGGER.info("¡Mundo abierto a LAN! Puerto Java: {} (shareWithBedrock={})", port, shareWithBedrock);
 
 		if (client.player != null) {
-			String bedrockNote = shareWithBedrock
-				? "§r. Aquí es donde arrancaríamos Geyser."
-				: "§r. (Compartir con Bedrock desactivado)";
-			client.player.sendSystemMessage(
-				Component.literal("§a[BedrockBridge] §rMundo abierto a LAN en puerto §e" + port + bedrockNote)
-			);
+			Component msg = shareWithBedrock
+				? Component.literal("§a[BedrockBridge] §rJava §e" + port + "§r · Bedrock §e19132§r (UDP). Floodgate activo.")
+				: Component.literal("§a[BedrockBridge] §rLAN abierta en §e" + port + "§r. §7(Compartir con Bedrock desactivado)");
+			client.player.sendSystemMessage(msg);
 		}
 	}
 
