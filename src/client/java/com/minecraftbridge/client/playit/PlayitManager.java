@@ -61,8 +61,34 @@ public final class PlayitManager {
 			// Dedicated named pipe so we don't collide with a system-installed playitd.
 			daemonSocketArg = "\\\\.\\pipe\\bedrockbridge-playit";
 		} else {
-			// Unix socket file inside the state dir.
-			daemonSocketArg = stateDir.resolve("playit.sock").toString();
+			daemonSocketArg = pickShortUnixSocketPath();
+		}
+	}
+
+	// Unix domain sockets must fit in sockaddr_un.sun_path (~108 chars on Linux,
+	// 104 on macOS). gameDir can be very deep — Flatpak Prism Launcher pushes
+	// it past 120 chars before we even append "playit.sock", and the daemon
+	// dies with "path must be shorter than SUN_LEN". We pick a short location:
+	// XDG_RUNTIME_DIR (typically /run/user/<uid>, ~13 chars) when available,
+	// otherwise /tmp. A 8-char hash of the gameDir suffix keeps multiple MC
+	// instances from sharing the same socket.
+	private String pickShortUnixSocketPath() {
+		String runtimeDir = System.getenv("XDG_RUNTIME_DIR");
+		if (runtimeDir == null || runtimeDir.isEmpty() || !Files.isDirectory(Path.of(runtimeDir))) {
+			runtimeDir = System.getProperty("java.io.tmpdir", "/tmp");
+		}
+		return runtimeDir + "/bb-playit-" + shortHash(stateDir.toString()) + ".sock";
+	}
+
+	private static String shortHash(String input) {
+		try {
+			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+			byte[] hash = md.digest(input.getBytes(StandardCharsets.UTF_8));
+			StringBuilder sb = new StringBuilder(8);
+			for (int i = 0; i < 4; i++) sb.append(String.format("%02x", hash[i]));
+			return sb.toString();
+		} catch (java.security.NoSuchAlgorithmException e) {
+			return "x";
 		}
 	}
 

@@ -116,7 +116,31 @@ final class PlayitApi {
 		req.add("firewall_id", null);
 		req.add("proxy_protocol", null);
 
-		post("/tunnels/create", req, secret);
+		// The cloud rejects /tunnels/create with AgentVersionTooOld while the
+		// daemon's UDP control-protocol register is still in flight — that takes
+		// ~5-30 s after first daemon start. Without a retry the first attempt
+		// always fails for fresh accounts. Each retry calls post() which itself
+		// returns 4xx without retrying, so AgentVersionTooOld bubbles out here
+		// where we can wait and try again.
+		long[] retryDelaysMs = {2000, 3000, 5000, 5000, 10000, 10000, 10000};
+		IOException last = null;
+		for (int attempt = 0; attempt <= retryDelaysMs.length; attempt++) {
+			try {
+				post("/tunnels/create", req, secret);
+				return;
+			} catch (IOException e) {
+				String msg = e.getMessage();
+				if (msg != null && msg.contains("AgentVersionTooOld") && attempt < retryDelaysMs.length) {
+					BedrockBridge.LOGGER.warn("Playit cloud hasn't registered the daemon yet (attempt {}/{}), waiting {}ms",
+							attempt + 1, retryDelaysMs.length + 1, retryDelaysMs[attempt]);
+					Thread.sleep(retryDelaysMs[attempt]);
+					last = e;
+					continue;
+				}
+				throw e;
+			}
+		}
+		throw last;
 	}
 
 	// Backoff between retries when the call fails because of network or 5xx.
