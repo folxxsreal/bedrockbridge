@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/main/resources/assets/bedrockbridge/icongithub.png" alt="BedrockBridge" width="480">
+</p>
+
 # BedrockBridge
 
 A Fabric mod for Minecraft Java that lets **Minecraft Bedrock** players (phone, console, tablet, Windows 10) join your single-player world **with a single click**. No port-forwarding, no setup, no Microsoft account on the guest side.

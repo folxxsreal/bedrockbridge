@@ -50,6 +50,7 @@ libs/
 # runtime state (puede contener playit.toml con secret de la cuenta playit)
 
 bedrockbridge/
+!src/main/resources/assets/bedrockbridge/
 **/bedrockbridge/playit.toml
 
 # secrets locales
