@@ -4,7 +4,6 @@ import com.minecraftbridge.BedrockBridge;
 import com.minecraftbridge.client.Chat;
 import com.minecraftbridge.client.PlayitStatus;
 import com.minecraftbridge.playit.PlayitBinaries;
-import com.minecraftbridge.playit.PlayitBinaries.InstalledBinaries;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -26,8 +25,6 @@ public final class PlayitManager {
 	private static final PlayitManager INSTANCE = new PlayitManager();
 	public static PlayitManager get() { return INSTANCE; }
 
-	private static final Pattern CLAIM_URL_PATTERN =
-			Pattern.compile("(https?://playit\\.gg/claim/[A-Za-z0-9]+)");
 	private static final Pattern PUBLIC_ENDPOINT_PATTERN =
 			Pattern.compile("([a-z0-9-]+\\.gl\\.at\\.ply\\.gg(?::\\d+)?)");
 
@@ -39,10 +36,9 @@ public final class PlayitManager {
 
 	private volatile Process daemonProcess;
 	private volatile Thread daemonReaderThread;
-	private volatile Process claimProcess;
-	private volatile Thread claimReaderThread;
+	private volatile Thread claimThread;
 	private volatile Thread watchdogThread;
-	private volatile InstalledBinaries installedBinaries;
+	private volatile Path daemonPath;
 	private volatile boolean wantDaemonAlive = false;
 	private final AtomicReference<String> lastAnnouncedEndpoint = new AtomicReference<>();
 
@@ -74,18 +70,22 @@ public final class PlayitManager {
 
 	private void startAsync() {
 		try {
-			installedBinaries = PlayitBinaries.ensureInstalled(binDir);
+			daemonPath = PlayitBinaries.ensureDaemon(binDir);
 			if (!hasSecret()) {
-				runClaimFlow(installedBinaries.cli());
+				runClaimFlow();
 			}
 			if (hasSecret()) {
 				wantDaemonAlive = true;
-				launchDaemon(installedBinaries.daemon());
+				launchDaemon(daemonPath);
 				startWatchdog();
 				ensureTunnelAsync();
 			} else {
 				Chat.error("Esperando claim", "abrí el link de arriba en el navegador");
 			}
+		} catch (UnsupportedOperationException e) {
+			BedrockBridge.LOGGER.warn("Plataforma sin soporte de Playit: {}", e.getMessage());
+			PlayitStatus.set(PlayitStatus.ERROR, "plataforma sin túnel");
+			Chat.error("Playit no soportado en esta plataforma", e.getMessage());
 		} catch (Exception e) {
 			BedrockBridge.LOGGER.error("Fallo al iniciar Playit", e);
 			PlayitStatus.set(PlayitStatus.ERROR, e.getMessage());
@@ -133,7 +133,7 @@ public final class PlayitManager {
 				}
 				if (!wantDaemonAlive) return;
 				try {
-					launchDaemon(installedBinaries.daemon());
+					launchDaemon(daemonPath);
 					Chat.send(Chat.header().append(Chat.ok("Túnel restablecido")));
 					PlayitStatus.set(PlayitStatus.ONLINE, lastAnnouncedEndpoint.get() == null ? "reconectado" : lastAnnouncedEndpoint.get());
 				} catch (IOException e) {
@@ -183,41 +183,21 @@ public final class PlayitManager {
 	private static final Pattern SECRET_LINE =
 			Pattern.compile("\\s*secret_key\\s*=\\s*\"([0-9a-fA-F]{64})\"\\s*");
 
-	private void runClaimFlow(Path cliPath) throws IOException, InterruptedException {
+	// Claim flow purely en Java. Sin spawn de playit-cli — el daemon es el único
+	// binario que necesitamos por plataforma. Ver PlayitClaim para el detalle de
+	// los endpoints /claim/setup y /claim/exchange.
+	private void runClaimFlow() throws IOException, InterruptedException {
 		PlayitStatus.set(PlayitStatus.CLAIMING, "abrí el link en el browser");
-		String claimCode = exec(cliPath.toString(), "claim", "generate").trim();
-		BedrockBridge.LOGGER.info("Playit claim code generado: {}", claimCode);
-		String claimUrl = exec(cliPath.toString(), "claim", "url",
-				"--name", "BedrockBridge", "--type", "self-managed", claimCode).trim();
-		Matcher m = CLAIM_URL_PATTERN.matcher(claimUrl);
-		String displayUrl = m.find() ? m.group(1) : claimUrl;
-		announceClaimUrl(displayUrl);
+		claimThread = Thread.currentThread();
+		String code = PlayitClaim.generateCode();
+		BedrockBridge.LOGGER.info("Playit claim code generado: {}", code);
+		announceClaimUrl(PlayitClaim.claimUrl(code));
 
-		// claim exchange blocks (long-poll) until the user accepts in the browser
-		// and then prints the secret to stdout. --wait 0 = infinite.
-		// claim exchange prints repeating status lines ("Open this link...", "Approve this
-		// program...", "Program approved. Finishing setup..."), and finally the secret as
-		// the last hex token on stdout. Capture lines, then grab the last hex64 we see.
-		ProcessBuilder pb = new ProcessBuilder(cliPath.toString(),
-				"claim", "exchange", "--wait", "0", claimCode)
-				.redirectErrorStream(true);
-		claimProcess = pb.start();
-		String secret = null;
-		try (BufferedReader r = new BufferedReader(
-				new InputStreamReader(claimProcess.getInputStream(), StandardCharsets.UTF_8))) {
-			String line;
-			while ((line = r.readLine()) != null) {
-				String trimmed = line.trim();
-				BedrockBridge.LOGGER.debug("[playit-claim] {}", trimmed);
-				if (trimmed.matches("[0-9a-fA-F]{64}")) {
-					secret = trimmed;
-				}
-			}
-		}
-		int code = claimProcess.waitFor();
-		claimProcess = null;
-		if (code != 0 || secret == null) {
-			throw new IOException("claim exchange exit=" + code + ", secret hallado: " + (secret != null));
+		PlayitClaim.waitForUserAcceptance(code);
+		String secret = PlayitClaim.exchangeForSecret(code);
+		claimThread = null;
+		if (!secret.matches("[0-9a-fA-F]{64}")) {
+			throw new IOException("Secret de Playit con formato inesperado: " + secret.length() + " chars");
 		}
 		Files.writeString(secretPath, "secret_key = \"" + secret + "\"\n", StandardCharsets.UTF_8);
 		BedrockBridge.LOGGER.info("Secret de Playit guardado en {}", secretPath);
@@ -268,9 +248,11 @@ public final class PlayitManager {
 			watchdogThread.interrupt();
 			watchdogThread = null;
 		}
-		if (claimProcess != null) {
-			claimProcess.destroy();
-			claimProcess = null;
+		// El claim flow es polling HTTP; interrumpir el hilo lo aborta limpio.
+		Thread claim = claimThread;
+		if (claim != null) {
+			claim.interrupt();
+			claimThread = null;
 		}
 		if (daemonProcess != null) {
 			daemonProcess.destroy();
@@ -279,19 +261,6 @@ public final class PlayitManager {
 		}
 		lastAnnouncedEndpoint.set(null);
 		PlayitStatus.set(PlayitStatus.IDLE, "");
-	}
-
-	private String exec(String... cmd) throws IOException, InterruptedException {
-		Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
-		StringBuilder out = new StringBuilder();
-		try (BufferedReader r = new BufferedReader(
-				new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8))) {
-			String line;
-			while ((line = r.readLine()) != null) out.append(line).append('\n');
-		}
-		int code = p.waitFor();
-		if (code != 0) throw new IOException(cmd[0] + " " + cmd[1] + " exit=" + code + " salida: " + out);
-		return out.toString();
 	}
 
 	private void announceClaimUrl(String url) {

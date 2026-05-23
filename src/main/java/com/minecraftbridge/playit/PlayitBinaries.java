@@ -17,57 +17,41 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
 
-// Lazy-downloads the Playit daemon + CLI binaries for the current OS/arch.
-// SHAs are hardcoded — a release-pin failure is preferred over silently running
-// a different binary than what we audited.
+// Descarga lazy del daemon de Playit por OS/arch. Solo daemon — el claim flow
+// se hace en Java puro vía PlayitClaim, así no necesitamos el binario CLI
+// (que Windows ni siquiera publica en releases).
 public final class PlayitBinaries {
 
 	public static final String RELEASE_TAG = "v1.0.4";
 	private static final String RELEASE_URL_BASE =
 			"https://github.com/playit-cloud/playit-agent/releases/download/" + RELEASE_TAG + "/";
 
-	public record Binary(String name, String sha256) {
+	public record DaemonSpec(String name, String sha256) {
 		public String url() { return RELEASE_URL_BASE + name; }
 	}
 
-	// Platforms we support today. Add new ones by pinning SHAs from the v1.0.4 release.
-	public record Platform(Binary daemon, Binary cli) {}
-
-	private static final Platform LINUX_AMD64 = new Platform(
-			new Binary("playit-linux-amd64", "abc88684b1b535c871fb3fb67a2a8cde08ce99bf80b1cafc00b0b01ab5c3956c"),
-			new Binary("playit-cli-linux-amd64", "4d8cabb16ec1567247f42d39768a414f84ee2bf894491a4a777275e568f97228")
-	);
-
-	public record InstalledBinaries(Path daemon, Path cli) {}
+	// Matriz de plataformas soportadas. Agregar una entrada nueva = nada más
+	// pinear el SHA256 desde el release v1.0.4 y agregar el case en detect().
+	private static final DaemonSpec LINUX_AMD64 = new DaemonSpec(
+			"playit-linux-amd64",
+			"abc88684b1b535c871fb3fb67a2a8cde08ce99bf80b1cafc00b0b01ab5c3956c");
+	private static final DaemonSpec LINUX_AARCH64 = new DaemonSpec(
+			"playit-linux-aarch64",
+			"d09670f4ccab2a846509109f69ccd236c1031f95110542a2d5cf53d7bbcd2686");
+	private static final DaemonSpec WINDOWS_X86_64 = new DaemonSpec(
+			"playit-windows-x86_64-signed.exe",
+			"88000d40af7a8e5a0548d27d71c0cad7d5f4b91fd85f6e9297237ac8b57fbdc9");
 
 	private PlayitBinaries() {}
 
-	// Returns paths to both binaries, downloading them if missing.
-	// Idempotent: re-checks SHA on existing files and re-downloads if it doesn't match.
-	public static InstalledBinaries ensureInstalled(Path binDir) throws IOException {
-		Platform platform = detectPlatform();
+	// Returns path to the daemon, downloading it if missing or if the existing
+	// file's SHA doesn't match (catches corruption / accidental version mix).
+	public static Path ensureDaemon(Path binDir) throws IOException {
+		DaemonSpec spec = detectPlatform();
 		Files.createDirectories(binDir);
-		Path daemonPath = binDir.resolve(platform.daemon().name());
-		Path cliPath = binDir.resolve(platform.cli().name());
-		ensureBinary(platform.daemon(), daemonPath);
-		ensureBinary(platform.cli(), cliPath);
-		return new InstalledBinaries(daemonPath, cliPath);
-	}
-
-	private static Platform detectPlatform() {
-		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-		String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
-		if (os.contains("linux") && (arch.equals("amd64") || arch.equals("x86_64"))) {
-			return LINUX_AMD64;
-		}
-		throw new UnsupportedOperationException(
-				"Plataforma no soportada por BedrockBridge para Playit: os=" + os + " arch=" + arch
-				+ " (por ahora solo Linux amd64; TODO Windows x86_64 y aarch64).");
-	}
-
-	private static void ensureBinary(Binary spec, Path target) throws IOException {
+		Path target = binDir.resolve(spec.name());
 		if (Files.exists(target) && sha256(target).equals(spec.sha256())) {
-			return;
+			return target;
 		}
 		BedrockBridge.LOGGER.info("Descargando {} desde {} ...", spec.name(), spec.url());
 		download(spec.url(), target);
@@ -79,6 +63,26 @@ public final class PlayitBinaries {
 		}
 		makeExecutable(target);
 		BedrockBridge.LOGGER.info("{} listo en {} (SHA256 verificado).", spec.name(), target);
+		return target;
+	}
+
+	private static DaemonSpec detectPlatform() {
+		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+		String arch = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+		if (os.contains("linux")) {
+			if (arch.equals("amd64") || arch.equals("x86_64")) return LINUX_AMD64;
+			if (arch.equals("aarch64") || arch.equals("arm64")) return LINUX_AARCH64;
+		} else if (os.contains("win")) {
+			if (arch.equals("amd64") || arch.equals("x86_64")) return WINDOWS_X86_64;
+		} else if (os.contains("mac") || os.contains("darwin")) {
+			throw new UnsupportedOperationException(
+					"Playit no publica binarios oficiales de macOS. Por ahora BedrockBridge "
+					+ "no puede levantar el túnel automáticamente en Mac. Geyser y Floodgate "
+					+ "siguen funcionando para conexiones LAN locales.");
+		}
+		throw new UnsupportedOperationException(
+				"Plataforma no soportada por BedrockBridge para Playit: os=" + os + " arch=" + arch
+				+ ". Soportadas: Linux (amd64, aarch64) y Windows (x86_64).");
 	}
 
 	private static void download(String url, Path target) throws IOException {
@@ -122,7 +126,7 @@ public final class PlayitBinaries {
 			perms.add(PosixFilePermission.OTHERS_EXECUTE);
 			Files.setPosixFilePermissions(path, perms);
 		} catch (UnsupportedOperationException e) {
-			// Windows: no POSIX perms, ejecutables ya son ejecutables por extensión.
+			// Windows: no hay POSIX perms, .exe es ejecutable por la extensión.
 		}
 	}
 }

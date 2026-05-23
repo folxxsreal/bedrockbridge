@@ -17,9 +17,12 @@ Te aparece el endpoint público en chat (ej. `means-confidentiality.gl.at.ply.gg
 - Fabric Loader **>= 0.19.2**.
 - Java **25** runtime.
 - Fabric API.
-- Linux x86_64 (por ahora; Windows/macOS pendientes — el lado Java compila multi-plataforma pero el binario Playit que se baja es Linux only).
+- Plataformas soportadas para el túnel Playit:
+  - **Linux** x86_64 y aarch64 (Raspberry Pi 4+, etc.)
+  - **Windows** x86_64
+  - **macOS**: no soportado por ahora (Playit no publica binarios oficiales). Geyser y Floodgate igual funcionan para conexiones LAN locales — solo no podés exponer a internet automáticamente.
 
-Las dependencias del mod (Geyser-Fabric, Floodgate-Fabric, binarios Playit) se descargan automáticamente — no hay que instalar nada a mano.
+Las dependencias del mod (Geyser-Fabric, Floodgate-Fabric, daemon Playit) se descargan automáticamente — no hay que instalar nada a mano.
 
 ---
 
