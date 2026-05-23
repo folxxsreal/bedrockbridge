@@ -2,6 +2,7 @@ package com.example.client;
 
 import com.example.BedrockBridge;
 import com.example.client.playit.PlayitManager;
+import com.example.state.BedrockBridgeState;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
@@ -14,8 +15,6 @@ import net.minecraft.network.chat.Component;
 public class BedrockBridgeClient implements ClientModInitializer {
 
 	private boolean lanWasOpen = false;
-
-	private static boolean shareWithBedrock = true;
 
 	@Override
 	public void onInitializeClient() {
@@ -34,15 +33,15 @@ public class BedrockBridgeClient implements ClientModInitializer {
 				Screens.getFont(screen)
 			)
 			.pos(10, height - 55)
-			.selected(shareWithBedrock)
+			.selected(BedrockBridgeState.shareWithBedrock)
 			.onValueChange((cb, value) -> {
-				shareWithBedrock = value;
+				BedrockBridgeState.shareWithBedrock = value;
 				BedrockBridge.LOGGER.info("Checkbox 'Compartir con Bedrock' cambiado a: {}", value);
 			})
 			.build();
 
 		Screens.getWidgets(screen).add(checkbox);
-		BedrockBridge.LOGGER.info("Checkbox inyectado en ShareToLanScreen (estado inicial: {}).", shareWithBedrock);
+		BedrockBridge.LOGGER.info("Checkbox inyectado en ShareToLanScreen (estado inicial: {}).", BedrockBridgeState.shareWithBedrock);
 	}
 
 	private void onClientTick(Minecraft client) {
@@ -61,16 +60,16 @@ public class BedrockBridgeClient implements ClientModInitializer {
 
 	private void onLanOpened(Minecraft client) {
 		int port = client.getSingleplayerServer().getPort();
-		BedrockBridge.LOGGER.info("¡Mundo abierto a LAN! Puerto Java: {} (shareWithBedrock={})", port, shareWithBedrock);
+		BedrockBridge.LOGGER.info("¡Mundo abierto a LAN! Puerto Java: {} (shareWithBedrock={})", port, BedrockBridgeState.shareWithBedrock);
 
 		if (client.player != null) {
-			Component msg = shareWithBedrock
+			Component msg = BedrockBridgeState.shareWithBedrock
 				? Component.literal("§a[BedrockBridge] §rJava §e" + port + "§r · Bedrock §e19132§r (UDP). Floodgate activo.")
 				: Component.literal("§a[BedrockBridge] §rLAN abierta en §e" + port + "§r. §7(Compartir con Bedrock desactivado)");
 			client.player.sendSystemMessage(msg);
 		}
 
-		if (shareWithBedrock) {
+		if (BedrockBridgeState.shareWithBedrock) {
 			PlayitManager.get().start();
 		}
 	}

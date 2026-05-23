@@ -3,7 +3,8 @@
 	"package": "com.example.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
-		"ExampleMixin"
+		"ExampleMixin",
+		"GeyserModBootstrapMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
