@@ -41,7 +41,13 @@ public final class PlayitManager {
 	private volatile Thread daemonReaderThread;
 	private volatile Process claimProcess;
 	private volatile Thread claimReaderThread;
+	private volatile Thread watchdogThread;
+	private volatile InstalledBinaries installedBinaries;
+	private volatile boolean wantDaemonAlive = false;
 	private final AtomicReference<String> lastAnnouncedEndpoint = new AtomicReference<>();
+
+	// Backoff progresivo entre reintentos de restart del daemon, en segundos.
+	private static final int[] RESTART_BACKOFF_SEC = {5, 15, 45};
 
 	private PlayitManager() {}
 
@@ -68,12 +74,14 @@ public final class PlayitManager {
 
 	private void startAsync() {
 		try {
-			InstalledBinaries bins = PlayitBinaries.ensureInstalled(binDir);
+			installedBinaries = PlayitBinaries.ensureInstalled(binDir);
 			if (!hasSecret()) {
-				runClaimFlow(bins.cli());
+				runClaimFlow(installedBinaries.cli());
 			}
 			if (hasSecret()) {
-				launchDaemon(bins.daemon());
+				wantDaemonAlive = true;
+				launchDaemon(installedBinaries.daemon());
+				startWatchdog();
 				ensureTunnelAsync();
 			} else {
 				Chat.error("Esperando claim", "abrí el link de arriba en el navegador");
@@ -84,6 +92,57 @@ public final class PlayitManager {
 			Chat.error("Playit no arrancó: " + e.getMessage(),
 					"revisá los logs y reabrí LAN");
 		}
+	}
+
+	// Detecta si el daemon muere inesperadamente y lo relanza con backoff exponencial.
+	// Termina cuando stop() limpia wantDaemonAlive o tras agotar los reintentos.
+	private void startWatchdog() {
+		if (watchdogThread != null && watchdogThread.isAlive()) return;
+		watchdogThread = new Thread(() -> {
+			int attempt = 0;
+			while (wantDaemonAlive) {
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
+				Process p = daemonProcess;
+				if (p == null || p.isAlive()) {
+					attempt = 0;
+					continue;
+				}
+				if (!wantDaemonAlive) return;
+				if (attempt >= RESTART_BACKOFF_SEC.length) {
+					BedrockBridge.LOGGER.error("Daemon Playit murió y agotamos {} reintentos, me rindo.", RESTART_BACKOFF_SEC.length);
+					PlayitStatus.set(PlayitStatus.ERROR, "daemon no se recupera");
+					Chat.error("El túnel cayó y no se recupera tras varios intentos",
+							"cerrá LAN y reabrila para volver a probar");
+					return;
+				}
+				int delaySec = RESTART_BACKOFF_SEC[attempt++];
+				BedrockBridge.LOGGER.warn("Daemon Playit murió (exit={}). Relanzando en {}s (intento {}/{}).",
+						p.exitValue(), delaySec, attempt, RESTART_BACKOFF_SEC.length);
+				PlayitStatus.set(PlayitStatus.BOOTSTRAPPING, "reintentando túnel (" + attempt + "/" + RESTART_BACKOFF_SEC.length + ")");
+				Chat.send(Chat.header().append(Chat.warn("Túnel cayó · reintentando en " + delaySec + "s")));
+				try {
+					Thread.sleep(delaySec * 1000L);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				}
+				if (!wantDaemonAlive) return;
+				try {
+					launchDaemon(installedBinaries.daemon());
+					Chat.send(Chat.header().append(Chat.ok("Túnel restablecido")));
+					PlayitStatus.set(PlayitStatus.ONLINE, lastAnnouncedEndpoint.get() == null ? "reconectado" : lastAnnouncedEndpoint.get());
+				} catch (IOException e) {
+					BedrockBridge.LOGGER.error("Restart de daemon falló", e);
+				}
+			}
+		}, "BedrockBridge-Playit-Watchdog");
+		watchdogThread.setDaemon(true);
+		watchdogThread.start();
 	}
 
 	// Resolves the public Bedrock endpoint via the Playit REST API, creating the tunnel if
@@ -204,6 +263,11 @@ public final class PlayitManager {
 	}
 
 	public synchronized void stop() {
+		wantDaemonAlive = false; // pará el watchdog antes de matar el proceso
+		if (watchdogThread != null) {
+			watchdogThread.interrupt();
+			watchdogThread = null;
+		}
 		if (claimProcess != null) {
 			claimProcess.destroy();
 			claimProcess = null;

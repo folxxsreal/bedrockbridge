@@ -3,6 +3,7 @@ package com.example.client.playit;
 import com.example.BedrockBridge;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -130,7 +131,29 @@ final class PlayitApi {
 		post("/tunnels/create", req, secret);
 	}
 
+	// Backoff entre reintentos cuando la llamada falla por red o 5xx.
+	private static final long[] RETRY_DELAYS_MS = {1000, 3000, 7000};
+
 	private static JsonObject post(String path, JsonObject body, String secret) throws IOException, InterruptedException {
+		IOException lastError = null;
+		for (int attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+			try {
+				return postOnce(path, body, secret);
+			} catch (IOException e) {
+				lastError = e;
+				if (!isTransient(e) || attempt == RETRY_DELAYS_MS.length) {
+					throw e;
+				}
+				long delay = RETRY_DELAYS_MS[attempt];
+				BedrockBridge.LOGGER.warn("Playit API {} falló ({}), reintentando en {}ms (intento {}/{})",
+						path, e.getMessage(), delay, attempt + 1, RETRY_DELAYS_MS.length);
+				Thread.sleep(delay);
+			}
+		}
+		throw lastError;
+	}
+
+	private static JsonObject postOnce(String path, JsonObject body, String secret) throws IOException, InterruptedException {
 		HttpRequest req = HttpRequest.newBuilder(URI.create(API_URL + path))
 				.header("Content-Type", "application/json")
 				.header("Accept", "application/json")
@@ -151,6 +174,17 @@ final class PlayitApi {
 		}
 		JsonElement data = obj.get("data");
 		return data != null && data.isJsonObject() ? data.getAsJsonObject() : new JsonObject();
+	}
+
+	// Reintentar solo en fallas de red o 5xx del server. Errores 4xx (validación,
+	// auth) son determinísticos y reintentarlos no ayuda — devolverlos ya.
+	private static boolean isTransient(IOException e) {
+		String msg = e.getMessage();
+		if (msg == null) return true; // socket cerrado, dns, etc.
+		if (msg.contains("HTTP 5")) return true;
+		if (msg.contains("HTTP 408") || msg.contains("HTTP 429")) return true;
+		if (msg.contains("HTTP 4")) return false; // 4xx no transitorio
+		return true;
 	}
 
 	private static String stringOr(JsonObject o, String key, String def) {
